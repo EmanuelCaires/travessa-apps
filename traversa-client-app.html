@@ -1,0 +1,1760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traversa — Client App</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=DM+Mono:wght@300;400&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── RESET ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#06060e;display:flex;align-items:center;justify-content:center;font-family:'Instrument Sans',sans-serif;overflow:hidden}
+
+/* ── PHONE SHELL ── */
+.phone-wrap{position:relative;display:flex;align-items:center;gap:32px}
+.phone-frame{
+  width:390px;height:844px;
+  background:#0a0a14;
+  border-radius:52px;
+  border:1.5px solid rgba(255,255,255,0.1);
+  box-shadow:0 0 0 8px #0f0f1a,0 0 0 9px rgba(255,255,255,0.06),0 40px 80px rgba(0,0,0,0.8),0 0 60px rgba(201,169,110,0.04);
+  overflow:hidden;
+  position:relative;
+  display:flex;flex-direction:column;
+}
+.phone-notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:120px;height:34px;
+  background:#0a0a14;
+  border-radius:0 0 20px 20px;
+  z-index:200;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.notch-cam{width:10px;height:10px;border-radius:50%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.08)}
+.notch-face{width:26px;height:10px;border-radius:5px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.06)}
+.phone-status{
+  height:44px;display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 28px 6px;flex-shrink:0;position:relative;z-index:10;
+}
+.status-time{font-family:'DM Mono',monospace;font-size:15px;font-weight:400;color:#f4f2ed}
+.status-icons{display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(244,242,237,0.7)}
+.signal{display:flex;align-items:flex-end;gap:1.5px;height:10px}
+.signal span{background:rgba(244,242,237,0.7);border-radius:1px;width:2.5px}
+.signal span:nth-child(1){height:4px}
+.signal span:nth-child(2){height:6px}
+.signal span:nth-child(3){height:8px}
+.signal span:nth-child(4){height:10px}
+.battery-icon{width:22px;height:11px;border:1px solid rgba(244,242,237,0.5);border-radius:2.5px;position:relative;display:flex;align-items:center;padding:1.5px}
+.battery-icon::after{content:'';position:absolute;right:-4px;top:50%;transform:translateY(-50%);width:2.5px;height:5px;background:rgba(244,242,237,0.5);border-radius:0 1px 1px 0}
+.battery-fill{background:#4ade80;border-radius:1px;height:100%;width:70%}
+
+/* ── APP CONTAINER ── */
+.app{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;transition:transform .38s cubic-bezier(.4,0,.2,1),opacity .38s ease;overflow:hidden}
+.screen.hidden-left{transform:translateX(-100%);opacity:0;pointer-events:none}
+.screen.hidden-right{transform:translateX(100%);opacity:0;pointer-events:none}
+.screen.active{transform:translateX(0);opacity:1}
+
+/* ── CSS VARIABLES ── */
+:root{
+  --ink:#0a0a14;--deep:#0d0d1c;--surface:#121224;--card:#181830;--card2:#1e1e38;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --gold:#c9a96e;--gold2:#e2c48d;--gold-dim:rgba(201,169,110,0.12);--gold-glow:rgba(201,169,110,0.06);
+  --white:#f4f2ed;--muted:rgba(244,242,237,0.48);--dim:rgba(244,242,237,0.22);
+  --green:#4ade80;--green-d:rgba(74,222,128,0.12);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,0.1);
+  --red:#ef4444;--red-d:rgba(239,68,68,0.1);
+  --blue:#60a5fa;--blue-d:rgba(96,165,250,0.1);
+}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{
+  height:78px;background:rgba(13,13,28,0.96);
+  backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  display:flex;align-items:flex-start;padding:0;flex-shrink:0;
+  position:relative;z-index:100;
+}
+.bn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding-top:10px;cursor:pointer;transition:all .2s;border:none;background:none}
+.bn-ico{font-size:20px;transition:transform .2s}
+.bn-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);transition:color .2s}
+.bn.active .bn-lbl{color:var(--gold)}
+.bn.active .bn-ico{transform:translateY(-1px)}
+.bn:active .bn-ico{transform:scale(.88)}
+
+/* ── SCROLL CONTENT ── */
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.scroll-area::-webkit-scrollbar{display:none}
+
+/* ── SHARED ── */
+.page-pad{padding:0 20px}
+.section-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;margin-bottom:4px;line-height:1.1}
+.section-title em{font-style:italic;color:var(--gold)}
+.mono-label{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+.card-block{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px}
+.card-block+.card-block{margin-top:12px}
+.divider{height:1px;background:var(--border);margin:0 20px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;padding:3px 8px;border-radius:4px;text-transform:uppercase}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.badge-live{background:var(--green-d);color:var(--green)}.badge-live::before{background:var(--green);animation:pulse 2s infinite}
+.badge-pending{background:var(--amber-d);color:var(--amber)}.badge-pending::before{background:var(--amber)}
+.badge-done{background:rgba(255,255,255,0.05);color:var(--muted)}.badge-done::before{background:var(--muted)}
+.badge-assigned{background:var(--blue-d);color:var(--blue)}.badge-assigned::before{background:var(--blue)}
+.badge-gold{background:var(--gold-dim);color:var(--gold)}.badge-gold::before{background:var(--gold)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.4)}50%{box-shadow:0 0 0 4px rgba(74,222,128,0)}}
+.btn-gold{background:var(--gold);color:var(--ink);border:none;border-radius:12px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:15px 24px;cursor:pointer;transition:all .18s;width:100%;display:block;text-align:center}
+.btn-gold:active{transform:scale(.97);background:var(--gold2)}
+.btn-outline{background:none;border:1px solid var(--border2);border-radius:12px;color:var(--white);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:14px 24px;cursor:pointer;transition:all .18s;width:100%;display:block;text-align:center}
+.btn-outline:active{border-color:var(--gold);color:var(--gold)}
+.btn-ghost{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:10px 16px;cursor:pointer;transition:all .18s;display:inline-block}
+.btn-ghost:active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold)}
+.row-between{display:flex;justify-content:space-between;align-items:center}
+.row-center{display:flex;align-items:center;gap:10px}
+.tag{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;background:var(--gold-dim);color:var(--gold);border-radius:3px}
+.form-label-s{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;display:block}
+.input-field{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--white);font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;padding:12px 14px;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.input-field:focus{border-color:var(--gold)}
+.input-field::placeholder{color:var(--muted)}
+.input-mono{font-family:'DM Mono',monospace;font-size:14px}
+.select-field{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--white);font-family:'DM Mono',monospace;font-size:13px;padding:12px 14px;outline:none;-webkit-appearance:none;cursor:pointer}
+.select-field option{background:var(--surface)}
+.form-group{margin-bottom:14px}
+.stars{display:inline-flex;gap:2px;font-size:12px}
+.star-f{color:var(--gold)}.star-e{color:var(--dim)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.fade-up{animation:fadeUp .4s ease forwards}
+.fade-in{animation:fadeIn .3s ease forwards}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes scaleIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ══════════════════════════════════
+   SPLASH / LOGIN SCREEN
+══════════════════════════════════ */
+#screen-splash{background:var(--ink);justify-content:center;align-items:center;flex-direction:column;gap:0}
+.splash-bg{position:absolute;inset:0;overflow:hidden}
+.splash-glow{position:absolute;border-radius:50%}
+.splash-glow-1{width:400px;height:400px;background:radial-gradient(circle,rgba(201,169,110,0.07),transparent 70%);top:-100px;right:-100px}
+.splash-glow-2{width:300px;height:300px;background:radial-gradient(circle,rgba(58,140,126,0.06),transparent 70%);bottom:-50px;left:-50px}
+.splash-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 32px;width:100%}
+.splash-logo{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:300;letter-spacing:.16em;color:var(--white);animation:fadeUp .9s .2s both}
+.splash-logo span{color:var(--gold)}
+.splash-tagline{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-top:8px;margin-bottom:52px;animation:fadeUp .9s .35s both}
+.splash-form{width:100%;display:flex;flex-direction:column;gap:12px;animation:fadeUp .9s .5s both}
+.splash-divider{display:flex;align-items:center;gap:12px;margin:4px 0}
+.splash-divider::before,.splash-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.splash-divider span{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.15em;color:var(--dim);text-transform:uppercase}
+.splash-bottom{margin-top:24px;font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);text-align:center;letter-spacing:.06em;animation:fadeUp .9s .65s both}
+.splash-bottom span{color:var(--gold);cursor:pointer}
+.phone-sign-in{display:flex;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.phone-code{background:var(--surface);border:none;border-right:1px solid var(--border);color:var(--gold);font-family:'DM Mono',monospace;font-size:13px;padding:13px 14px;width:70px;outline:none}
+.phone-num{flex:1;background:var(--surface);border:none;color:var(--white);font-family:'DM Mono',monospace;font-size:14px;padding:13px 14px;outline:none}
+.phone-num::placeholder{color:var(--muted)}
+
+/* ══════════════════════════════════
+   HOME SCREEN
+══════════════════════════════════ */
+#screen-home{background:var(--ink)}
+.home-header{padding:16px 20px 0;display:flex;justify-content:space-between;align-items:flex-start}
+.home-greeting{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;line-height:1.15}
+.home-greeting em{font-style:italic;color:var(--gold)}
+.home-greeting small{display:block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.avatar-btn{width:44px;height:44px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;flex-shrink:0}
+
+/* ACTIVE RIDE CARD */
+.active-ride-card{margin:18px 20px 0;background:linear-gradient(135deg,rgba(201,169,110,0.12),rgba(45,212,191,0.06));border:1px solid rgba(201,169,110,0.25);border-radius:20px;padding:18px;position:relative;overflow:hidden}
+.active-ride-card::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(201,169,110,0.1),transparent 70%);pointer-events:none}
+.arc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.arc-id{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--gold)}
+.arc-route{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;line-height:1.2;margin-bottom:12px}
+.arc-meta{display:flex;gap:12px;flex-wrap:wrap}
+.arc-meta-item{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.arc-meta-item em{color:var(--white);font-style:normal}
+.arc-driver{display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)}
+.arc-driver-avatar{width:38px;height:38px;border-radius:50%;background:var(--deep);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px}
+.arc-driver-info .name{font-size:14px;font-weight:400}
+.arc-driver-info .sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+.arc-track-btn{margin-left:auto;background:var(--gold);color:var(--ink);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;flex-shrink:0}
+
+/* QUICK BOOK */
+.quick-book{margin:20px 20px 0}
+.qb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.qb-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.qb-item::before{content:'';position:absolute;inset:0;background:var(--gold-glow);opacity:0;transition:opacity .2s}
+.qb-item:active::before{opacity:1}
+.qb-item:active{transform:scale(.97)}
+.qb-icon{font-size:24px;margin-bottom:10px;display:block}
+.qb-label{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;line-height:1.1}
+.qb-sub{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--muted);margin-top:4px}
+
+/* RECENT RIDES */
+.recent-section{margin:24px 20px 0}
+.ride-item{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer}
+.ride-item:last-child{border-bottom:none}
+.ride-ico{width:40px;height:40px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.ride-info{flex:1;min-width:0}
+.ride-route{font-size:14px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ride-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+.ride-price{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;color:var(--gold);text-align:right;flex-shrink:0}
+
+/* PROMO CARD */
+.promo-card{margin:20px 20px 0;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;display:flex;gap:14px;align-items:center}
+.promo-icon{font-size:32px;flex-shrink:0}
+.promo-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+.promo-text{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* ══════════════════════════════════
+   BOOK SCREEN
+══════════════════════════════════ */
+#screen-book{background:var(--ink)}
+.book-header{padding:16px 20px 20px;border-bottom:1px solid var(--border)}
+.book-header h1{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300}
+.book-header h1 em{color:var(--gold);font-style:italic}
+.step-dots{display:flex;gap:6px;margin-top:10px}
+.step-dot{height:3px;border-radius:2px;background:var(--border);flex:1;transition:background .3s}
+.step-dot.active{background:var(--gold)}
+.step-dot.done{background:rgba(201,169,110,0.4)}
+
+/* STEP PANELS */
+.step-panel{display:none;padding:20px 20px 24px;flex-direction:column;gap:14px}
+.step-panel.active{display:flex}
+.step-num{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.step-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;line-height:1.1;margin-bottom:4px}
+.step-title em{font-style:italic;color:var(--gold)}
+
+/* TRANSFER TYPE CHIPS */
+.type-chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.type-chip{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 14px;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;gap:6px}
+.type-chip.selected{border-color:var(--gold);background:var(--gold-dim)}
+.type-chip:active{transform:scale(.96)}
+.chip-icon{font-size:22px}
+.chip-label{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:300;line-height:1.1}
+.chip-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
+.type-chip.selected .chip-sub{color:var(--gold)}
+
+/* FLIGHT PILL */
+.flight-found{background:var(--green-d);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:12px 14px}
+.flight-found-title{font-family:'DM Mono',monospace;font-size:10px;color:var(--green);margin-bottom:6px}
+.flight-row-data{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.frd-item{display:flex;flex-direction:column;gap:2px}
+.frd-label{font-family:'DM Mono',monospace;font-size:8.5px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+.frd-val{font-family:'DM Mono',monospace;font-size:12px;color:var(--white)}
+.flight-delayed{background:var(--amber-d);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:12px 14px}
+.flight-delayed-title{font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);margin-bottom:4px}
+
+/* VEHICLE CARDS */
+.vehicle-list{display:flex;flex-direction:column;gap:8px}
+.vehicle-row{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .18s}
+.vehicle-row.selected{border-color:var(--gold);background:var(--gold-dim)}
+.vehicle-row:active{transform:scale(.98)}
+.vr-icon{font-size:26px;width:44px;text-align:center;flex-shrink:0}
+.vr-info{flex:1}
+.vr-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300}
+.vr-example{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--muted);margin-top:2px}
+.vr-pax{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--muted);margin-top:2px}
+.vr-price{text-align:right;flex-shrink:0}
+.vr-amount{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold);font-weight:300;line-height:1}
+.vr-per{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px}
+
+/* QUOTE CARD */
+.quote-total{font-family:'Cormorant Garamond',serif;font-size:52px;font-weight:300;color:var(--gold);text-align:center;line-height:1}
+.quote-currency{font-size:28px}
+.quote-rows{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:16px}
+.qr{display:flex;justify-content:space-between;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px}
+.qr:last-child{border-bottom:none}
+.qr .l{color:var(--muted)}
+.qr .r{font-family:'DM Mono',monospace;font-size:12px;color:var(--white)}
+.qr.total-row .l{color:var(--white);font-weight:500}
+.qr.total-row .r{color:var(--gold)}
+.matched-driver{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;gap:12px;align-items:center;margin-top:12px}
+.md-avatar{width:48px;height:48px;border-radius:50%;background:var(--surface);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.md-info .name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300}
+.md-info .sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+.md-info .live{font-family:'DM Mono',monospace;font-size:10px;color:var(--green);margin-top:4px}
+.guarantee-pill{background:var(--green-d);border:1px solid rgba(74,222,128,0.15);border-radius:10px;padding:12px 14px;margin-top:12px}
+.gp-text{font-family:'DM Mono',monospace;font-size:10px;color:var(--green);letter-spacing:.05em;line-height:1.5}
+
+/* CONFIRM SUCCESS */
+.confirm-screen{display:flex;flex-direction:column;align-items:center;padding:32px 20px;gap:0}
+.confirm-check{font-size:64px;animation:scaleIn .5s .1s both}
+.confirm-id-lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-top:20px}
+.confirm-id{font-family:'DM Mono',monospace;font-size:28px;letter-spacing:.18em;color:var(--gold);margin-top:4px}
+.confirm-title{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;margin-top:8px}
+.confirm-sub{font-size:13px;color:var(--muted);text-align:center;line-height:1.6;margin-top:8px;margin-bottom:28px}
+.confirm-driver-card{width:100%;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px}
+
+/* ══════════════════════════════════
+   TRACK SCREEN
+══════════════════════════════════ */
+#screen-track{background:var(--ink)}
+.track-header{padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+.track-map-wrap{position:relative;height:260px;background:#0c0c1e;flex-shrink:0}
+.track-map-overlay{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none}
+.map-chip{background:rgba(10,10,20,0.88);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--white)}
+.map-chip em{color:var(--gold);font-style:normal}
+.track-bottom{flex:1;overflow-y:auto}
+.track-bottom::-webkit-scrollbar{display:none}
+
+/* DRIVER INFO STRIP */
+.driver-strip{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px}
+.driver-strip .avatar{width:52px;height:52px;border-radius:50%;background:var(--gold-dim);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;position:relative}
+.driver-strip .avatar .live-dot{position:absolute;bottom:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--ink);animation:pulse 2s infinite}
+.driver-strip .info{flex:1}
+.driver-strip .name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300}
+.driver-strip .meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+.driver-strip .vehicle{font-family:'DM Mono',monospace;font-size:10px;color:var(--white);margin-top:2px}
+.driver-strip .actions{display:flex;flex-direction:column;gap:6px}
+.action-btn{width:38px;height:38px;border-radius:10px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .18s}
+.action-btn:active{background:var(--gold-dim);border-color:var(--gold)}
+
+/* JOURNEY STEPS */
+.journey-steps{padding:16px 20px;border-bottom:1px solid var(--border)}
+.jstep{display:flex;gap:14px;position:relative}
+.jstep+.jstep{margin-top:0}
+.jstep-line-wrap{display:flex;flex-direction:column;align-items:center;width:18px;flex-shrink:0}
+.jstep-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.jstep-dot.done{background:var(--green)}
+.jstep-dot.now{background:var(--gold);animation:pulse 2s infinite}
+.jstep-dot.waiting{background:var(--dim);border:1px solid var(--border)}
+.jstep-connector{flex:1;width:1px;background:var(--border);margin:4px 0;min-height:18px}
+.jstep-connector.done{background:var(--green)}
+.jstep-content{flex:1;padding-bottom:18px}
+.jstep-label{font-size:13px;font-weight:400}
+.jstep-label.done{color:var(--muted)}
+.jstep-label.now{color:var(--gold)}
+.jstep-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:2px}
+
+/* FLIGHT MONITOR */
+.flight-monitor{padding:16px 20px;border-bottom:1px solid var(--border)}
+.fm-row{display:flex;gap:0;align-items:stretch}
+.fm-col{flex:1;display:flex;flex-direction:column;gap:2px;padding-right:12px}
+.fm-col+.fm-col{padding-left:12px;padding-right:0;border-left:1px solid var(--border)}
+.fm-lbl{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim)}
+.fm-val{font-family:'DM Mono',monospace;font-size:14px;color:var(--white)}
+.fm-status{font-family:'DM Mono',monospace;font-size:10px;margin-top:8px}
+
+/* ETA TICKER */
+.eta-panel{padding:16px 20px;background:linear-gradient(to right,rgba(201,169,110,0.06),transparent);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.eta-num{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;color:var(--gold);line-height:1}
+.eta-unit{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-left:4px}
+.eta-info{text-align:right}
+.eta-dist{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)}
+
+/* MESSAGE BOX */
+.message-area{padding:16px 20px}
+.msg-input-row{display:flex;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;padding:4px 4px 4px 14px;align-items:center}
+.msg-input{flex:1;background:none;border:none;color:var(--white);font-family:'Instrument Sans',sans-serif;font-size:14px;outline:none;padding:8px 0}
+.msg-input::placeholder{color:var(--dim)}
+.msg-send{background:var(--gold);border:none;border-radius:9px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0;transition:background .2s}
+.msg-send:active{background:var(--gold2)}
+
+/* ══════════════════════════════════
+   RIDES SCREEN
+══════════════════════════════════ */
+#screen-rides{background:var(--ink)}
+.rides-header{padding:16px 20px 0}
+.rides-filter{display:flex;gap:8px;padding:14px 20px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rides-filter::-webkit-scrollbar{display:none}
+.filter-chip{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:7px 14px;border-radius:8px;border:1px solid var(--border);color:var(--muted);cursor:pointer;flex-shrink:0;transition:all .18s;background:none}
+.filter-chip.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold)}
+.filter-chip:active{transform:scale(.95)}
+.ride-card{margin:0 20px 12px;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer;transition:all .18s}
+.ride-card:active{transform:scale(.98);border-color:rgba(201,169,110,0.3)}
+.rc-top{padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.rc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.rc-id{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold)}
+.rc-price{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:var(--gold)}
+.rc-route{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;line-height:1.2;color:var(--white);margin-bottom:6px}
+.rc-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);line-height:1.6}
+.rc-bottom{padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.rc-driver{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.rc-actions{display:flex;gap:6px}
+.rc-btn{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;border-radius:7px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all .18s}
+.rc-btn:active{border-color:var(--gold);color:var(--gold)}
+.rc-btn.primary{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+
+/* RECEIPT SHEET */
+.bottom-sheet{position:absolute;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
+.bottom-sheet.open{opacity:1;pointer-events:all}
+.sheet-content{width:100%;background:var(--deep);border-radius:24px 24px 0 0;padding:24px 20px 40px;max-height:80%;overflow-y:auto;animation:slideUp .35s ease}
+.sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 20px}
+
+/* RATING PROMPT */
+.rating-prompt{background:linear-gradient(135deg,rgba(201,169,110,0.1),rgba(74,222,128,0.05));border:1px solid rgba(201,169,110,0.2);border-radius:16px;padding:20px;margin:0 20px 12px;text-align:center}
+.rp-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;margin-bottom:4px}
+.rp-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:16px}
+.star-rate{display:flex;justify-content:center;gap:12px;margin-bottom:16px}
+.star-rate span{font-size:32px;cursor:pointer;transition:transform .15s;filter:grayscale(1);opacity:.4}
+.star-rate span.lit{filter:none;opacity:1;transform:scale(1.1)}
+.star-rate span:active{transform:scale(1.2)}
+
+/* ══════════════════════════════════
+   CONCIERGE / CHAT SCREEN
+══════════════════════════════════ */
+#screen-concierge{background:var(--ink);display:flex;flex-direction:column}
+.conc-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-shrink:0}
+.conc-avatar{width:44px;height:44px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;position:relative}
+.conc-avatar .dot{position:absolute;bottom:1px;right:1px;width:9px;height:9px;border-radius:50%;background:var(--green);border:2px solid var(--ink)}
+.conc-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300}
+.conc-status{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px}
+.chat-area{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.chat-area::-webkit-scrollbar{display:none}
+.chat-bubble{max-width:82%;padding:12px 14px;border-radius:16px;font-size:13.5px;line-height:1.6}
+.chat-bubble.ai{background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px;color:var(--muted);align-self:flex-start}
+.chat-bubble.ai strong{color:var(--white);font-weight:400}
+.chat-bubble.user{background:var(--gold);color:var(--ink);border-bottom-right-radius:4px;align-self:flex-end;font-weight:400}
+.chat-bubble.typing{padding:14px 18px}
+.typing-dots{display:flex;gap:5px;align-items:center}
+.typing-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:typingBounce 1.2s infinite}
+.typing-dot:nth-child(2){animation-delay:.2s}
+.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.quick-replies{padding:0 20px 12px;display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0}
+.quick-replies::-webkit-scrollbar{display:none}
+.qr-chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;flex-shrink:0;transition:all .18s;white-space:nowrap}
+.qr-chip:active{border-color:var(--gold);color:var(--gold);background:var(--gold-dim)}
+.chat-input-area{padding:12px 16px 16px;border-top:1px solid var(--border);background:var(--deep);flex-shrink:0}
+.chat-input-box{display:flex;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;padding:4px 4px 4px 16px;align-items:center}
+.chat-text-input{flex:1;background:none;border:none;color:var(--white);font-family:'Instrument Sans',sans-serif;font-size:14px;outline:none;padding:9px 0}
+.chat-text-input::placeholder{color:var(--dim)}
+.chat-send-btn{background:var(--gold);border:none;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0;transition:background .18s}
+.chat-send-btn:active{background:var(--gold2)}
+
+/* ══════════════════════════════════
+   PROFILE SCREEN
+══════════════════════════════════ */
+#screen-profile{background:var(--ink)}
+.profile-hero{padding:24px 20px 20px;background:linear-gradient(to bottom,rgba(201,169,110,0.06),transparent);border-bottom:1px solid var(--border)}
+.ph-avatar{width:72px;height:72px;border-radius:50%;background:var(--gold-dim);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:14px}
+.ph-name{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300}
+.ph-email{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:3px}
+.ph-badges{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.loyalty-strip{margin:16px 20px 0;background:linear-gradient(135deg,rgba(201,169,110,0.12),rgba(201,169,110,0.04));border:1px solid rgba(201,169,110,0.2);border-radius:14px;padding:16px}
+.ls-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.ls-title{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+.ls-level{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;color:var(--white)}
+.ls-points{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;color:var(--gold);line-height:1}
+.ls-bar{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:10px;overflow:hidden}
+.ls-progress{height:100%;background:var(--gold);border-radius:2px;transition:width .6s ease}
+.ls-meta{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-top:6px}
+.profile-section{padding:20px 20px 0}
+.ps-title{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.pref-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:background .18s}
+.pref-row:active{background:var(--card2)}
+.pref-label{display:flex;align-items:center;gap:10px;font-size:14px}
+.pref-icon{font-size:18px;width:24px;text-align:center}
+.pref-right{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.pref-right::after{content:'›';font-size:16px;color:var(--dim)}
+.toggle{width:42px;height:24px;background:var(--border2);border-radius:12px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--gold)}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:var(--white);top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.toggle.on::after{transform:translateX(18px)}
+.payment-card{background:linear-gradient(135deg,#1a1a2e,#2a1a0e);border:1px solid rgba(201,169,110,0.2);border-radius:14px;padding:16px;margin-bottom:8px}
+.pc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.pc-bank{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold)}
+.pc-type{font-size:22px}
+.pc-number{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:.2em;color:var(--white)}
+.pc-exp{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px}
+
+/* ══════════════════════════════════
+   NOTIFICATIONS
+══════════════════════════════════ */
+.notif-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid var(--ink)}
+.notif-tray{position:absolute;top:44px;left:0;right:0;z-index:300;background:var(--deep);border-bottom:1px solid var(--border);display:none;animation:fadeIn .25s ease}
+.notif-tray.open{display:block}
+.notif-item{display:flex;gap:12px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:background .18s}
+.notif-item:active{background:var(--card)}
+.ni-icon{font-size:20px;flex-shrink:0;width:32px;text-align:center}
+.ni-text{flex:1}
+.ni-title{font-size:13px;color:var(--white);font-weight:400;line-height:1.4}
+.ni-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+.ni-time{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);flex-shrink:0}
+
+/* PANEL LABEL on right side */
+.panel-label{writing-mode:vertical-rl;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(201,169,110,0.2);margin-top:20px;user-select:none}
+</style>
+</head>
+<body>
+
+<div class="phone-wrap">
+
+  <!-- PHONE FRAME -->
+  <div class="phone-frame">
+    <div class="phone-notch">
+      <div class="notch-face"></div>
+      <div class="notch-cam"></div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="phone-status">
+      <div class="status-time" id="status-clock">09:41</div>
+      <div class="status-icons">
+        <div class="signal"><span></span><span></span><span></span><span></span></div>
+        <span style="font-size:11px;margin-left:2px">5G</span>
+        <div class="battery-icon"><div class="battery-fill"></div></div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATION TRAY -->
+    <div class="notif-tray" id="notif-tray">
+      <div class="notif-item" onclick="closeNotif()">
+        <div class="ni-icon">⚡</div>
+        <div class="ni-text"><div class="ni-title">Flight EK201 delayed 40 min</div><div class="ni-sub">Your driver has been notified and will adjust</div></div>
+        <div class="ni-time">2m</div>
+      </div>
+      <div class="notif-item" onclick="closeNotif()">
+        <div class="ni-icon">🚗</div>
+        <div class="ni-text"><div class="ni-title">Ahmed K. is en route to Heathrow</div><div class="ni-sub">TRV-8821 · ETA 12 minutes</div></div>
+        <div class="ni-time">8m</div>
+      </div>
+      <div class="notif-item" onclick="closeNotif()">
+        <div class="ni-icon">✅</div>
+        <div class="ni-text"><div class="ni-title">Receipt ready for TRV-8819</div><div class="ni-sub">Paris CDG → Claridge's · £245</div></div>
+        <div class="ni-time">1h</div>
+      </div>
+    </div>
+
+    <!-- APP -->
+    <div class="app">
+
+      <!-- ══ SPLASH / LOGIN ══ -->
+      <div class="screen active" id="screen-splash">
+        <div class="splash-bg">
+          <div class="splash-glow splash-glow-1"></div>
+          <div class="splash-glow splash-glow-2"></div>
+        </div>
+        <div class="splash-content" style="flex:1;justify-content:center;display:flex;flex-direction:column;padding-top:60px">
+          <div class="splash-logo">tra<span>·</span>versa</div>
+          <div class="splash-tagline">Premium Global Transfers</div>
+
+          <div class="splash-form">
+            <div class="form-group">
+              <div class="form-label-s">Mobile Number</div>
+              <div class="phone-sign-in">
+                <input class="phone-code" value="+44" maxlength="4">
+                <input class="phone-num" placeholder="7700 900 123" id="phone-input" type="tel">
+              </div>
+            </div>
+            <button class="btn-gold" onclick="doLogin()">Continue →</button>
+            <div class="splash-divider"><span>or</span></div>
+            <button class="btn-outline" onclick="doLogin()">Continue with Apple</button>
+            <button class="btn-outline" onclick="doLogin()" style="margin-top:0">Continue with Google</button>
+          </div>
+
+          <div class="splash-bottom" style="margin-top:32px">
+            By continuing you agree to our <span>Terms</span> &amp; <span>Privacy Policy</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ HOME ══ -->
+      <div class="screen hidden-right" id="screen-home">
+        <div style="display:flex;flex-direction:column;height:100%">
+          <!-- Sticky header -->
+          <div class="home-header" style="flex-shrink:0;position:relative">
+            <div>
+              <div class="home-greeting">Good morning,<br><em>James.</em><small>Saturday, 28 March</small></div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+              <div class="avatar-btn" onclick="toggleNotif()" style="position:relative">
+                👤
+                <div class="notif-dot"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="scroll-area" style="flex:1">
+            <!-- ACTIVE RIDE CARD -->
+            <div class="active-ride-card" onclick="goScreen('track')">
+              <div class="arc-header">
+                <span class="badge badge-live">Live Now</span>
+                <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">TRV-8821</div>
+              </div>
+              <div class="arc-route">Heathrow T5<br>→ The Connaught, Mayfair</div>
+              <div class="arc-meta">
+                <div class="arc-meta-item">✈ <em>BA0117 On Time</em></div>
+                <div class="arc-meta-item">👥 <em>2 pax</em></div>
+                <div class="arc-meta-item">📍 <em>28 km</em></div>
+              </div>
+              <div class="arc-driver">
+                <div class="arc-driver-avatar">🚗</div>
+                <div class="arc-driver-info">
+                  <div class="name">Ahmed Karimi</div>
+                  <div class="sub" style="color:var(--green)">● En route · 12 min away</div>
+                </div>
+                <div class="arc-track-btn">Track →</div>
+              </div>
+            </div>
+
+            <!-- QUICK BOOK -->
+            <div class="quick-book">
+              <div class="mono-label" style="margin-bottom:12px">Book a Transfer</div>
+              <div class="qb-grid">
+                <div class="qb-item" onclick="goBook('arrival')">
+                  <span class="qb-icon">✈️</span>
+                  <div class="qb-label">Airport<br>Arrival</div>
+                  <div class="qb-sub">Flight → Hotel</div>
+                </div>
+                <div class="qb-item" onclick="goBook('departure')">
+                  <span class="qb-icon">🛫</span>
+                  <div class="qb-label">Airport<br>Departure</div>
+                  <div class="qb-sub">Hotel → Airport</div>
+                </div>
+                <div class="qb-item" onclick="goBook('cruise')">
+                  <span class="qb-icon">🚢</span>
+                  <div class="qb-label">Cruise<br>Port</div>
+                  <div class="qb-sub">Embark / Disembark</div>
+                </div>
+                <div class="qb-item" onclick="goBook('p2p')">
+                  <span class="qb-icon">📍</span>
+                  <div class="qb-label">Point to<br>Point</div>
+                  <div class="qb-sub">Any two locations</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PROMO -->
+            <div class="promo-card" style="margin-top:20px">
+              <div class="promo-icon">✨</div>
+              <div>
+                <div class="promo-label">Gold Member Offer</div>
+                <div class="promo-text">10% off your next First Class booking. Use code <strong style="color:var(--gold)">GOLD10</strong></div>
+              </div>
+            </div>
+
+            <!-- RECENT RIDES -->
+            <div class="recent-section">
+              <div class="row-between" style="margin-bottom:14px">
+                <div class="mono-label">Recent Rides</div>
+                <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);cursor:pointer" onclick="goScreen('rides')">See all →</div>
+              </div>
+              <div class="ride-item" onclick="goScreen('rides')">
+                <div class="ride-ico">✈️</div>
+                <div class="ride-info">
+                  <div class="ride-route">CDG → Claridge's Hotel</div>
+                  <div class="ride-meta">Yesterday · Pierre M. · ★ 5.0</div>
+                </div>
+                <div>
+                  <div class="ride-price">£245</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--green);text-align:right;margin-top:2px">★ Rated</div>
+                </div>
+              </div>
+              <div class="ride-item" onclick="goScreen('rides')">
+                <div class="ride-ico">🚢</div>
+                <div class="ride-info">
+                  <div class="ride-route">Southampton → Gatwick</div>
+                  <div class="ride-meta">22 Mar · Steven H. · ★ 4.9</div>
+                </div>
+                <div>
+                  <div class="ride-price">£310</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--green);text-align:right;margin-top:2px">★ Rated</div>
+                </div>
+              </div>
+              <div class="ride-item" onclick="goScreen('rides')">
+                <div class="ride-ico">✈️</div>
+                <div class="ride-info">
+                  <div class="ride-route">Changi T1 → Marina Bay Sands</div>
+                  <div class="ride-meta">15 Mar · Wei L. · ★ 5.0</div>
+                </div>
+                <div>
+                  <div class="ride-price">£82</div>
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--green);text-align:right;margin-top:2px">★ Rated</div>
+                </div>
+              </div>
+              <div style="height:20px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ BOOK ══ -->
+      <div class="screen hidden-right" id="screen-book">
+        <div style="display:flex;flex-direction:column;height:100%">
+          <div class="book-header" style="flex-shrink:0">
+            <div class="row-between">
+              <div>
+                <div class="book-header h1" style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300">Book a <em style="color:var(--gold);font-style:italic">Transfer</em></div>
+              </div>
+              <button class="btn-ghost" onclick="goScreen('home')" style="padding:8px 12px">✕</button>
+            </div>
+            <div class="step-dots" id="step-dots">
+              <div class="step-dot active" id="dot-1"></div>
+              <div class="step-dot" id="dot-2"></div>
+              <div class="step-dot" id="dot-3"></div>
+              <div class="step-dot" id="dot-4"></div>
+            </div>
+          </div>
+
+          <div class="scroll-area" style="flex:1">
+            <!-- STEP 1 — TYPE -->
+            <div class="step-panel active" id="bstep-1">
+              <div>
+                <div class="step-num">Step 1 of 4</div>
+                <div class="step-title">Transfer <em>type</em></div>
+              </div>
+              <div class="type-chips" id="type-chips">
+                <div class="type-chip selected" onclick="selType(this,'arrival')">
+                  <span class="chip-icon">✈️</span>
+                  <div class="chip-label">Airport Arrival</div>
+                  <div class="chip-sub">Flight → Destination</div>
+                </div>
+                <div class="type-chip" onclick="selType(this,'departure')">
+                  <span class="chip-icon">🛫</span>
+                  <div class="chip-label">Airport Departure</div>
+                  <div class="chip-sub">Location → Airport</div>
+                </div>
+                <div class="type-chip" onclick="selType(this,'cruise')">
+                  <span class="chip-icon">🚢</span>
+                  <div class="chip-label">Cruise Port</div>
+                  <div class="chip-sub">Embark / Disembark</div>
+                </div>
+                <div class="type-chip" onclick="selType(this,'p2p')">
+                  <span class="chip-icon">📍</span>
+                  <div class="chip-label">Point to Point</div>
+                  <div class="chip-sub">Any two locations</div>
+                </div>
+              </div>
+              <button class="btn-gold" onclick="bStep(2)">Continue →</button>
+            </div>
+
+            <!-- STEP 2 — DETAILS -->
+            <div class="step-panel" id="bstep-2">
+              <div>
+                <div class="step-num">Step 2 of 4</div>
+                <div class="step-title">Journey <em>details</em></div>
+              </div>
+              <div class="form-group">
+                <div class="form-label-s">Flight Number</div>
+                <input class="input-field input-mono" id="b-flight" placeholder="BA0117" oninput="lkFlight(this.value)" autocomplete="off">
+              </div>
+              <div id="flight-status-box"></div>
+              <div class="form-group">
+                <div class="form-label-s">Pickup</div>
+                <input class="input-field" id="b-pickup" placeholder="Terminal, port or address">
+              </div>
+              <div class="form-group">
+                <div class="form-label-s">Drop-off</div>
+                <input class="input-field" id="b-dropoff" placeholder="Hotel, address or venue">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div class="form-group">
+                  <div class="form-label-s">Date</div>
+                  <input class="input-field input-mono" type="date" id="b-date" style="font-size:14px;padding:14px">
+                </div>
+                <div class="form-group">
+                  <div class="form-label-s">Passengers</div>
+                  <select class="select-field" id="b-pax">
+                    <option>1</option><option>2</option><option>3</option>
+                    <option>4</option><option>5</option><option>6</option><option>7+</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="form-label-s">Luggage</div>
+                <select class="select-field">
+                  <option>1–2 pieces</option>
+                  <option>3–4 pieces</option>
+                  <option>5–6 pieces</option>
+                  <option>7+ or oversized</option>
+                </select>
+              </div>
+              <div style="display:flex;gap:10px">
+                <button class="btn-outline" onclick="bStep(1)" style="width:auto;padding:14px 20px">←</button>
+                <button class="btn-gold" onclick="bStep(3)" style="flex:1">Continue →</button>
+              </div>
+            </div>
+
+            <!-- STEP 3 — VEHICLE -->
+            <div class="step-panel" id="bstep-3">
+              <div>
+                <div class="step-num">Step 3 of 4</div>
+                <div class="step-title">Choose your <em>vehicle</em></div>
+              </div>
+              <div class="vehicle-list" id="vehicle-list">
+                <div class="vehicle-row" onclick="selVehicle(this,'saloon',65)">
+                  <div class="vr-icon">🚗</div>
+                  <div class="vr-info">
+                    <div class="vr-name">Saloon</div>
+                    <div class="vr-example">Mercedes E-Class · BMW 5</div>
+                    <div class="vr-pax">👥 1–3 passengers</div>
+                  </div>
+                  <div class="vr-price"><div class="vr-amount">£65</div><div class="vr-per">from</div></div>
+                </div>
+                <div class="vehicle-row" onclick="selVehicle(this,'executive',95)">
+                  <div class="vr-icon">🚙</div>
+                  <div class="vr-info">
+                    <div class="vr-name">Executive MPV</div>
+                    <div class="vr-example">Mercedes V-Class · Viano</div>
+                    <div class="vr-pax">👥 1–5 passengers</div>
+                  </div>
+                  <div class="vr-price"><div class="vr-amount">£95</div><div class="vr-per">from</div></div>
+                </div>
+                <div class="vehicle-row" onclick="selVehicle(this,'suv',110)">
+                  <div class="vr-icon">🛻</div>
+                  <div class="vr-info">
+                    <div class="vr-name">Business SUV</div>
+                    <div class="vr-example">Range Rover · Audi Q7</div>
+                    <div class="vr-pax">👥 1–4 passengers</div>
+                  </div>
+                  <div class="vr-price"><div class="vr-amount">£110</div><div class="vr-per">from</div></div>
+                </div>
+                <div class="vehicle-row" onclick="selVehicle(this,'minibus',140)">
+                  <div class="vr-icon">🚐</div>
+                  <div class="vr-info">
+                    <div class="vr-name">Minibus</div>
+                    <div class="vr-example">Mercedes Sprinter</div>
+                    <div class="vr-pax">👥 6–8 passengers</div>
+                  </div>
+                  <div class="vr-price"><div class="vr-amount">£140</div><div class="vr-per">from</div></div>
+                </div>
+                <div class="vehicle-row" onclick="selVehicle(this,'first',220)">
+                  <div class="vr-icon">💎</div>
+                  <div class="vr-info">
+                    <div class="vr-name">First Class</div>
+                    <div class="vr-example">Bentley · Mercedes S-Class</div>
+                    <div class="vr-pax">👥 1–3 passengers</div>
+                  </div>
+                  <div class="vr-price"><div class="vr-amount">£220</div><div class="vr-per">from</div></div>
+                </div>
+                <div class="vehicle-row" onclick="selVehicle(this,'coach',380)">
+                  <div class="vr-icon">🚌</div>
+                  <div class="vr-info">
+                    <div class="vr-name">Executive Coach</div>
+                    <div class="vr-example">Mercedes Coach</div>
+                    <div class="vr-pax">👥 9–16 passengers</div>
+                  </div>
+                  <div class="vr-price"><div class="vr-amount">£380</div><div class="vr-per">from</div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px">
+                <button class="btn-outline" onclick="bStep(2)" style="width:auto;padding:14px 20px">←</button>
+                <button class="btn-gold" onclick="bStep(4)" style="flex:1">Review Quote →</button>
+              </div>
+            </div>
+
+            <!-- STEP 4 — QUOTE -->
+            <div class="step-panel" id="bstep-4">
+              <div>
+                <div class="step-num">Step 4 of 4</div>
+                <div class="step-title">Your <em>quote</em></div>
+              </div>
+              <div style="text-align:center;padding:8px 0">
+                <div class="quote-total"><span class="quote-currency">£</span><span id="q-total">89</span></div>
+                <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:.1em">FIXED PRICE · NO SURGES</div>
+              </div>
+              <div id="quote-breakdown"></div>
+              <div id="matched-driver-card"></div>
+              <div class="guarantee-pill">
+                <div class="gp-text">✈ Live flight monitoring included — your driver automatically adjusts for any delay, gate change, or early arrival. No extra charge, no calls needed.</div>
+              </div>
+              <div style="display:flex;gap:10px">
+                <button class="btn-outline" onclick="bStep(3)" style="width:auto;padding:14px 20px">←</button>
+                <button class="btn-gold" onclick="doConfirm()" style="flex:1">Confirm &amp; Pay →</button>
+              </div>
+            </div>
+
+            <!-- CONFIRMED -->
+            <div class="step-panel" id="bstep-confirmed">
+              <div class="confirm-screen">
+                <span class="confirm-check">✅</span>
+                <div class="confirm-id-lbl">Booking Reference</div>
+                <div class="confirm-id" id="c-ref">TRV-0000</div>
+                <div class="confirm-title">You're all set.</div>
+                <div class="confirm-sub">Your driver has been matched and is already monitoring your flight. You'll receive live updates as your journey approaches.</div>
+                <div class="confirm-driver-card">
+                  <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Your Driver</div>
+                  <div style="display:flex;align-items:center;gap:12px">
+                    <div style="width:48px;height:48px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:22px">🚗</div>
+                    <div id="c-driver"></div>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;width:100%;margin-top:20px">
+                  <button class="btn-gold" onclick="goScreen('track')">Track My Ride →</button>
+                  <button class="btn-outline" onclick="goScreen('home')">Back to Home</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ TRACK ══ -->
+      <div class="screen hidden-right" id="screen-track">
+        <div class="track-header" style="flex-shrink:0">
+          <div class="row-between" style="width:100%">
+            <div>
+              <div class="mono-label">Live Tracking</div>
+              <div style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;margin-top:2px">TRV-<em style="color:var(--gold);font-style:italic">8821</em></div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <span class="badge badge-live">Live</span>
+              <button class="btn-ghost" onclick="goScreen('home')" style="padding:7px 12px">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="track-map-wrap" style="flex-shrink:0">
+          <canvas id="track-canvas" width="390" height="260"></canvas>
+          <div class="track-map-overlay">
+            <div class="map-chip">ETA: <em id="track-eta">12 min</em></div>
+            <div class="map-chip"><em id="track-dist">6.2 km</em> away</div>
+          </div>
+        </div>
+
+        <div class="track-bottom">
+          <!-- ETA PANEL -->
+          <div class="eta-panel">
+            <div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Driver Arrives In</div>
+              <div style="display:flex;align-items:baseline;gap:4px">
+                <div class="eta-num" id="eta-big">12</div>
+                <div class="eta-unit">min</div>
+              </div>
+            </div>
+            <div class="eta-info">
+              <div class="eta-dist">Mercedes E-Class</div>
+              <div class="eta-dist" style="color:var(--white);margin-top:3px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.08em">LK71 BWX</div>
+              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);margin-top:4px">● Ahmed K. on the way</div>
+            </div>
+          </div>
+
+          <!-- DRIVER STRIP -->
+          <div class="driver-strip">
+            <div class="avatar">
+              🚗
+              <div class="live-dot"></div>
+            </div>
+            <div class="info">
+              <div class="name">Ahmed Karimi</div>
+              <div class="meta">★ 4.98 · 1,247 rides</div>
+              <div class="vehicle">Mercedes E-Class · Obsidian Black</div>
+            </div>
+            <div class="actions">
+              <div class="action-btn" title="Call">📞</div>
+              <div class="action-btn" title="Message" onclick="scrollToMsg()">💬</div>
+            </div>
+          </div>
+
+          <!-- FLIGHT MONITOR -->
+          <div class="flight-monitor">
+            <div class="row-between" style="margin-bottom:12px">
+              <div class="mono-label">Flight Monitor</div>
+              <span class="badge badge-live">On Time</span>
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;margin-bottom:10px">BA0117 · LHR T5</div>
+            <div class="fm-row">
+              <div class="fm-col">
+                <div class="fm-lbl">Departed</div>
+                <div class="fm-val">JFK 09:30</div>
+              </div>
+              <div class="fm-col">
+                <div class="fm-lbl">Arrives</div>
+                <div class="fm-val">LHR 21:15</div>
+              </div>
+              <div class="fm-col">
+                <div class="fm-lbl">Gate</div>
+                <div class="fm-val">B42</div>
+              </div>
+            </div>
+            <div class="fm-status" style="color:var(--green)">✓ Driver auto-adjusts to any changes</div>
+          </div>
+
+          <!-- JOURNEY STEPS -->
+          <div class="journey-steps">
+            <div class="mono-label" style="margin-bottom:14px">Journey Progress</div>
+            <div class="jstep">
+              <div class="jstep-line-wrap">
+                <div class="jstep-dot done"></div>
+                <div class="jstep-connector done"></div>
+              </div>
+              <div class="jstep-content">
+                <div class="jstep-label done">Booking confirmed</div>
+                <div class="jstep-sub">Paid · TRV-8821</div>
+              </div>
+            </div>
+            <div class="jstep">
+              <div class="jstep-line-wrap">
+                <div class="jstep-dot done"></div>
+                <div class="jstep-connector done"></div>
+              </div>
+              <div class="jstep-content">
+                <div class="jstep-label done">Driver matched</div>
+                <div class="jstep-sub">Ahmed Karimi · Mercedes E-Class</div>
+              </div>
+            </div>
+            <div class="jstep">
+              <div class="jstep-line-wrap">
+                <div class="jstep-dot now"></div>
+                <div class="jstep-connector"></div>
+              </div>
+              <div class="jstep-content">
+                <div class="jstep-label now">Driver en route to you</div>
+                <div class="jstep-sub">12 minutes · Heathrow T5</div>
+              </div>
+            </div>
+            <div class="jstep">
+              <div class="jstep-line-wrap">
+                <div class="jstep-dot waiting"></div>
+                <div class="jstep-connector"></div>
+              </div>
+              <div class="jstep-content">
+                <div class="jstep-label" style="color:var(--dim)">Driver at pickup</div>
+                <div class="jstep-sub" style="color:transparent">—</div>
+              </div>
+            </div>
+            <div class="jstep">
+              <div class="jstep-line-wrap">
+                <div class="jstep-dot waiting"></div>
+                <div class="jstep-connector"></div>
+              </div>
+              <div class="jstep-content">
+                <div class="jstep-label" style="color:var(--dim)">Journey in progress</div>
+              </div>
+            </div>
+            <div class="jstep">
+              <div class="jstep-line-wrap">
+                <div class="jstep-dot waiting"></div>
+              </div>
+              <div class="jstep-content">
+                <div class="jstep-label" style="color:var(--dim)">Arrived at destination</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- QUICK MESSAGE -->
+          <div class="message-area" id="msg-area">
+            <div class="mono-label" style="margin-bottom:10px">Message Driver</div>
+            <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+              <div class="btn-ghost" style="font-size:11px;padding:7px 12px" onclick="sendQuickMsg('I'm at the arrivals hall')">At arrivals hall</div>
+              <div class="btn-ghost" style="font-size:11px;padding:7px 12px" onclick="sendQuickMsg('Running 5 minutes late')">Running 5 min late</div>
+              <div class="btn-ghost" style="font-size:11px;padding:7px 12px" onclick="sendQuickMsg('I have extra luggage')">Extra luggage</div>
+            </div>
+            <div class="msg-input-row" id="msg-row">
+              <input class="msg-input" id="msg-input" placeholder="Message Ahmed…" onkeydown="if(event.key==='Enter')sendMsg()">
+              <div class="msg-send" onclick="sendMsg()">↑</div>
+            </div>
+            <div id="msg-thread" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+
+          <div style="padding:20px;border-top:1px solid var(--border)">
+            <button class="btn-outline" style="color:var(--red);border-color:rgba(239,68,68,0.3)" onclick="alert('Connecting to Traversa support…')">⚠️ Report an Issue</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ RIDES ══ -->
+      <div class="screen hidden-right" id="screen-rides">
+        <div style="display:flex;flex-direction:column;height:100%">
+          <div class="rides-header" style="flex-shrink:0">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;margin-bottom:4px">My <em style="color:var(--gold);font-style:italic">Rides</em></div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">47 total journeys</div>
+          </div>
+          <div class="rides-filter" style="flex-shrink:0" id="rides-filter">
+            <div class="filter-chip active" onclick="filterRides(this,'all')">All</div>
+            <div class="filter-chip" onclick="filterRides(this,'active')">Active</div>
+            <div class="filter-chip" onclick="filterRides(this,'upcoming')">Upcoming</div>
+            <div class="filter-chip" onclick="filterRides(this,'completed')">Completed</div>
+          </div>
+          <div class="scroll-area" style="flex:1" id="rides-scroll">
+            <!-- Rating prompt -->
+            <div class="rating-prompt" id="rating-prompt">
+              <div class="rp-title">How was your ride?</div>
+              <div class="rp-sub">Paris CDG → Claridge's · Pierre M.</div>
+              <div class="star-rate" id="star-rate">
+                <span onclick="rateStar(1)">⭐</span>
+                <span onclick="rateStar(2)">⭐</span>
+                <span onclick="rateStar(3)">⭐</span>
+                <span onclick="rateStar(4)">⭐</span>
+                <span onclick="rateStar(5)">⭐</span>
+              </div>
+              <button class="btn-gold" id="rate-btn" onclick="submitRating()" style="opacity:.5;pointer-events:none">Submit Rating</button>
+            </div>
+            <div id="rides-list"></div>
+          </div>
+        </div>
+        <!-- Bottom sheet for receipt -->
+        <div class="bottom-sheet" id="receipt-sheet" onclick="closeSheet()">
+          <div class="sheet-content" onclick="event.stopPropagation()">
+            <div class="sheet-handle"></div>
+            <div id="receipt-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CONCIERGE (AI CHAT) ══ -->
+      <div class="screen hidden-right" id="screen-concierge">
+        <div class="conc-header" style="flex-shrink:0">
+          <div class="conc-avatar">✨<div class="dot"></div></div>
+          <div>
+            <div class="conc-name">Traversa Concierge</div>
+            <div class="conc-status">AI-powered · 24/7 · Powered by Claude</div>
+          </div>
+          <div style="margin-left:auto"><span class="tag">Claude</span></div>
+        </div>
+        <div class="chat-area" id="conc-chat" style="flex:1"></div>
+        <div class="quick-replies" id="quick-replies" style="flex-shrink:0">
+          <div class="qr-chip" onclick="qReply('What vehicle do you recommend for 4 pax and large luggage?')">Vehicle advice</div>
+          <div class="qr-chip" onclick="qReply('How does live flight monitoring work?')">Flight tracking</div>
+          <div class="qr-chip" onclick="qReply('What is the cancellation policy?')">Cancellations</div>
+          <div class="qr-chip" onclick="qReply('Can I modify my booking?')">Modify booking</div>
+          <div class="qr-chip" onclick="qReply('What airports do you cover?')">Coverage</div>
+        </div>
+        <div class="chat-input-area" style="flex-shrink:0">
+          <div class="chat-input-box">
+            <input class="chat-text-input" id="conc-input" placeholder="Ask anything about your transfer…" onkeydown="if(event.key==='Enter')sendConc()">
+            <div class="chat-send-btn" onclick="sendConc()">↑</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PROFILE ══ -->
+      <div class="screen hidden-right" id="screen-profile">
+        <div class="scroll-area" style="height:100%">
+          <div class="profile-hero">
+            <div class="ph-avatar">👤</div>
+            <div class="ph-name">James Whitmore</div>
+            <div class="ph-email">j.whitmore@acmecorp.com</div>
+            <div class="ph-badges" style="margin-top:10px">
+              <span class="badge badge-gold">Gold Member</span>
+              <span class="badge badge-done">47 Rides</span>
+              <span class="badge badge-done">★ 4.8 Client</span>
+            </div>
+          </div>
+
+          <!-- LOYALTY -->
+          <div class="loyalty-strip">
+            <div class="ls-head">
+              <div>
+                <div class="ls-title">Traversa Rewards</div>
+                <div class="ls-level">Gold Status</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">Points</div>
+                <div class="ls-points">4,820</div>
+              </div>
+            </div>
+            <div class="ls-bar"><div class="ls-progress" style="width:68%"></div></div>
+            <div class="ls-meta">1,180 points to Platinum · £8,240 lifetime spend</div>
+          </div>
+
+          <!-- PAYMENT -->
+          <div class="profile-section">
+            <div class="ps-title">Payment Methods</div>
+            <div class="payment-card">
+              <div class="pc-top">
+                <div class="pc-bank">Amex Platinum</div>
+                <div class="pc-type">💳</div>
+              </div>
+              <div class="pc-number">•••• •••• •••• 4821</div>
+              <div class="pc-exp">Expires 09/27 · Default</div>
+            </div>
+            <button class="btn-ghost" style="width:100%;text-align:center;display:block">+ Add Payment Method</button>
+          </div>
+
+          <!-- PREFERENCES -->
+          <div class="profile-section" style="margin-top:16px">
+            <div class="ps-title">Ride Preferences</div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">🌡</span>Temperature</div>
+              <div class="pref-right">Cool (21°C)</div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">🎵</span>Music</div>
+              <div class="pref-right">None / Quiet</div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">💧</span>Water on board</div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">📰</span>Daily newspapers</div>
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">🔕</span>Quiet ride mode</div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+
+          <!-- NOTIFICATIONS -->
+          <div class="profile-section" style="margin-top:16px">
+            <div class="ps-title">Notifications</div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">✈️</span>Flight alerts</div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">🚗</span>Driver updates</div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">📧</span>Email receipts</div>
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">🎁</span>Offers &amp; promotions</div>
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+
+          <!-- ACCOUNT -->
+          <div class="profile-section" style="margin-top:16px;padding-bottom:32px">
+            <div class="ps-title">Account</div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">👤</span>Personal details</div>
+              <div class="pref-right">Edit</div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">🔒</span>Security</div>
+              <div class="pref-right">Manage</div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">📋</span>Invoices &amp; VAT</div>
+              <div class="pref-right">View all</div>
+            </div>
+            <div class="pref-row">
+              <div class="pref-label"><span class="pref-icon">🏢</span>Corporate account</div>
+              <div class="pref-right">ACME Corp</div>
+            </div>
+            <div class="pref-row" style="color:var(--red)">
+              <div class="pref-label"><span class="pref-icon">↩</span>Sign out</div>
+              <div style="font-size:16px;color:var(--dim)">›</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /app -->
+
+    <!-- BOTTOM NAV -->
+    <div class="bottom-nav" id="bottom-nav" style="display:none">
+      <button class="bn active" id="bn-home" onclick="navTo('home')">
+        <span class="bn-ico">🏠</span>
+        <span class="bn-lbl">Home</span>
+      </button>
+      <button class="bn" id="bn-rides" onclick="navTo('rides')">
+        <span class="bn-ico">📋</span>
+        <span class="bn-lbl">My Rides</span>
+      </button>
+      <button class="bn" id="bn-book" onclick="navTo('book')">
+        <span class="bn-ico" style="background:var(--gold);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--ink);font-size:22px;margin-top:-18px;box-shadow:0 4px 16px rgba(201,169,110,0.4)">✚</span>
+        <span class="bn-lbl">Book</span>
+      </button>
+      <button class="bn" id="bn-concierge" onclick="navTo('concierge')">
+        <span class="bn-ico">✨</span>
+        <span class="bn-lbl">Concierge</span>
+      </button>
+      <button class="bn" id="bn-profile" onclick="navTo('profile')">
+        <span class="bn-ico">👤</span>
+        <span class="bn-lbl">Profile</span>
+      </button>
+    </div>
+
+  </div><!-- /phone-frame -->
+
+  <div class="panel-label">TRAVERSA CLIENT APP</div>
+</div>
+
+<!-- ══════════════════════════════════════
+  JAVASCRIPT
+══════════════════════════════════════ -->
+<script>
+/* ─── DATA ─── */
+const FLIGHTS_DB = {
+  'BA0117':{airline:'British Airways',from:'New York JFK',to:'London LHR',dep:'09:30',arr:'21:15',status:'On Time',gate:'B42',terminal:'T5'},
+  'EK201':{airline:'Emirates',from:'Dubai DXB',to:'New York JFK',dep:'08:55',arr:'14:40',status:'Delayed +40min',gate:'C12',terminal:'T4'},
+  'AF1680':{airline:'Air France',from:'Paris CDG',to:'London LHR',dep:'07:30',arr:'08:00',status:'On Time',gate:'2E-24',terminal:'T3'},
+  'LH3402':{airline:'Lufthansa',from:'Frankfurt FRA',to:'Dubai DXB',dep:'10:00',arr:'14:30',status:'Landed',gate:'T3-B8',terminal:'T3'},
+  'SQ321':{airline:'Singapore Airlines',from:'Tokyo NRT',to:'Singapore SIN',dep:'06:10',arr:'11:55',status:'Landed',gate:'T1-A12',terminal:'T1'},
+  'QR001':{airline:'Qatar Airways',from:'London LHR',to:'Doha DOH',dep:'21:40',arr:'06:50',status:'On Time',gate:'A14',terminal:'T4'},
+};
+const DRIVERS_DB = [
+  {name:'Ahmed Karimi',rating:4.98,rides:1247,vehicle:'Mercedes E-Class',plate:'LK71 BWX',region:'London'},
+  {name:'Pierre Moreau',rating:4.96,rides:834,vehicle:'Mercedes S-Class',plate:'AA-123-BB',region:'Paris'},
+  {name:'Wei Lin',rating:4.95,rides:689,vehicle:'Mercedes E-Class',plate:'SJF 1234A',region:'Singapore'},
+  {name:'David Owusu',rating:4.93,rides:421,vehicle:'BMW 7 Series',plate:'MW21 RKT',region:'London'},
+  {name:'Omar Salah',rating:4.97,rides:2103,vehicle:'Toyota Alphard',plate:'AE1234',region:'Dubai'},
+];
+const RIDES_DB = [
+  {id:'TRV-8821',from:'Heathrow T5',to:'The Connaught, Mayfair',date:'Today',flight:'BA0117',status:'active',driver:'Ahmed K.',vehicle:'Mercedes E-Class',price:89,pax:2,dist:'28 km',rating:null},
+  {id:'TRV-8819',from:'Paris CDG',to:"Claridge's Hotel",date:'Yesterday',flight:'AF1680',status:'completed',driver:'Pierre M.',vehicle:'Mercedes S-Class',price:245,pax:1,dist:'36 km',rating:5},
+  {id:'TRV-8815',from:'Southampton Port',to:'Gatwick South',date:'22 Mar',flight:'—',status:'completed',driver:'Steven H.',vehicle:'Mercedes V-Class',price:310,pax:6,dist:'88 km',rating:5},
+  {id:'TRV-8812',from:'Changi T1',to:'Marina Bay Sands',date:'15 Mar',flight:'SQ321',status:'completed',driver:'Wei L.',vehicle:'Mercedes E-Class',price:82,pax:2,dist:'21 km',rating:5},
+  {id:'TRV-8808',from:'JFK Terminal 4',to:'The Plaza Hotel',date:'10 Mar',flight:'—',status:'completed',driver:'Carlos R.',vehicle:'Cadillac Escalade',price:198,pax:3,dist:'26 km',rating:4},
+  {id:'TRV-8823',from:'Heathrow T3',to:'Mandarin Oriental, Hyde Park',date:'Tomorrow',flight:'QR001',status:'upcoming',driver:null,vehicle:'Executive MPV',price:95,pax:2,dist:'25 km',rating:null},
+];
+
+/* ─── STATE ─── */
+let currentScreen = 'splash';
+let bookStep = 1;
+let selectedType = 'arrival';
+let selectedVehicle = null;
+let selectedVehiclePrice = 65;
+let ratingSelected = 0;
+let concMsgs = [];
+let trackAnim = null;
+let clockTimer = null;
+
+/* ─── CLOCK ─── */
+function updateClock() {
+  const now = new Date();
+  document.getElementById('status-clock').textContent = now.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+updateClock();
+clockTimer = setInterval(updateClock, 1000);
+
+/* ─── SCREEN ROUTING ─── */
+function goScreen(id) {
+  const cur = document.getElementById('screen-'+currentScreen);
+  const nxt = document.getElementById('screen-'+id);
+  if (!nxt || currentScreen === id) return;
+  cur.className = 'screen hidden-left';
+  nxt.className = 'screen active';
+  currentScreen = id;
+  // Update bottom nav
+  ['home','rides','book','concierge','profile'].forEach(s => {
+    const btn = document.getElementById('bn-'+s);
+    if (btn) btn.className = 'bn' + (s===id?' active':'');
+  });
+  if (id === 'track') initTrackMap();
+  if (id === 'rides') renderRides('all');
+  if (id === 'concierge') initConciege();
+}
+
+function navTo(id) {
+  const cur = document.getElementById('screen-'+currentScreen);
+  const nxt = document.getElementById('screen-'+id);
+  if (!nxt || currentScreen === id) return;
+  // determine direction
+  const order = ['home','rides','book','concierge','profile'];
+  const ci = order.indexOf(currentScreen), ni = order.indexOf(id);
+  cur.className = 'screen ' + (ni >= ci ? 'hidden-left' : 'hidden-right');
+  nxt.className = 'screen active';
+  currentScreen = id;
+  ['home','rides','book','concierge','profile'].forEach(s => {
+    const btn = document.getElementById('bn-'+s);
+    if (btn) btn.className = 'bn' + (s===id?' active':'');
+  });
+  if (id === 'rides') renderRides('all');
+  if (id === 'concierge') initConciege();
+}
+
+/* ─── LOGIN ─── */
+function doLogin() {
+  const splash = document.getElementById('screen-splash');
+  const home = document.getElementById('screen-home');
+  splash.style.opacity = '0';
+  splash.style.transform = 'scale(.95)';
+  splash.style.transition = 'all .45s ease';
+  setTimeout(() => {
+    splash.className = 'screen hidden-left';
+    home.className = 'screen active';
+    document.getElementById('bottom-nav').style.display = 'flex';
+    currentScreen = 'home';
+  }, 400);
+}
+
+/* ─── NOTIFICATIONS ─── */
+function toggleNotif() {
+  const tray = document.getElementById('notif-tray');
+  tray.classList.toggle('open');
+}
+function closeNotif() { document.getElementById('notif-tray').classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.avatar-btn') && !e.target.closest('#notif-tray')) {
+    document.getElementById('notif-tray').classList.remove('open');
+  }
+});
+
+/* ─── BOOKING WIZARD ─── */
+function goBook(type) {
+  selectedType = type;
+  goScreen('book');
+  bStep(1);
+  // Pre-select type
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
+  const map = {arrival:0,departure:1,cruise:2,p2p:3};
+  document.querySelectorAll('.type-chip')[map[type]||0].classList.add('selected');
+}
+
+function bStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const panel = document.getElementById('bstep-' + i);
+    if (panel) panel.className = 'step-panel' + (i===n?' active':'');
+  }
+  const conf = document.getElementById('bstep-confirmed');
+  if (conf) conf.className = 'step-panel';
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById('dot-' + i);
+    if (dot) dot.className = 'step-dot' + (i<n?' done':i===n?' active':'');
+  }
+  bookStep = n;
+  if (n === 4) buildQuote();
+  // Set today's date default
+  if (n === 2) {
+    const di = document.getElementById('b-date');
+    if (di && !di.value) di.value = new Date().toISOString().split('T')[0];
+  }
+}
+
+function selType(el, type) {
+  selectedType = type;
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selVehicle(el, type, price) {
+  selectedVehicle = type;
+  selectedVehiclePrice = price;
+  document.querySelectorAll('.vehicle-row').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function lkFlight(val) {
+  val = val.toUpperCase().trim();
+  const box = document.getElementById('flight-status-box');
+  const f = FLIGHTS_DB[val];
+  if (!f) { box.innerHTML = ''; return; }
+  const delayed = f.status.includes('Delayed') || f.status.includes('Cancelled');
+  const landed = f.status === 'Landed';
+  const col = delayed ? 'amber' : 'green';
+  box.innerHTML = `
+    <div class="${delayed?'flight-delayed':'flight-found'}" style="margin-bottom:10px;animation:fadeUp .3s ease">
+      <div class="${delayed?'flight-delayed-title':'flight-found-title'}">
+        ${landed?'✅ Landed':'✈ '+f.airline} · ${f.status}
+      </div>
+      <div class="flight-row-data">
+        <div class="frd-item"><div class="frd-label">From</div><div class="frd-val">${f.from}</div></div>
+        <div class="frd-item"><div class="frd-label">To</div><div class="frd-val">${f.to}</div></div>
+        <div class="frd-item"><div class="frd-label">Arrives</div><div class="frd-val">${f.arr}</div></div>
+        <div class="frd-item"><div class="frd-label">Terminal</div><div class="frd-val">${f.terminal}</div></div>
+      </div>
+    </div>
+  `;
+  // Auto-fill pickup if arrival
+  if (selectedType === 'arrival' && !document.getElementById('b-pickup').value) {
+    document.getElementById('b-pickup').value = `${f.to} ${f.terminal}`;
+  }
+}
+
+function buildQuote() {
+  const flight = document.getElementById('b-flight').value || '—';
+  const pickup = document.getElementById('b-pickup').value || 'Heathrow T5';
+  const dropoff = document.getElementById('b-dropoff').value || 'Central London';
+  const pax = document.getElementById('b-pax').value || '1';
+  const dist = Math.floor(Math.random() * 18 + 14);
+  const vehicleLabels = {saloon:'Saloon',executive:'Executive MPV',suv:'Business SUV',minibus:'Minibus',first:'First Class',coach:'Executive Coach'};
+  const vLabel = vehicleLabels[selectedVehicle] || 'Saloon';
+  const base = Math.round(selectedVehiclePrice * 0.048 * dist);
+  const surcharge = selectedType === 'cruise' ? 5 : 8;
+  const vat = Math.round((base + surcharge) * 0.2);
+  const total = base + surcharge + vat;
+  document.getElementById('q-total').textContent = total;
+  document.getElementById('quote-breakdown').innerHTML = `
+    <div class="quote-rows">
+      <div class="qr"><span class="l">Route</span><span class="r" style="font-size:10px;max-width:150px;text-align:right">${pickup} → ${dropoff}</span></div>
+      <div class="qr"><span class="l">Flight</span><span class="r">${flight}</span></div>
+      <div class="qr"><span class="l">Vehicle</span><span class="r">${vLabel}</span></div>
+      <div class="qr"><span class="l">Passengers</span><span class="r">${pax}</span></div>
+      <div class="qr"><span class="l">Est. distance</span><span class="r">${dist} km</span></div>
+      <div class="qr"><span class="l">Base fare</span><span class="r">£${base}</span></div>
+      <div class="qr"><span class="l">Airport surcharge</span><span class="r">£${surcharge}</span></div>
+      <div class="qr"><span class="l">VAT (20%)</span><span class="r">£${vat}</span></div>
+      <div class="qr total-row"><span class="l">Total</span><span class="r">£${total}</span></div>
+    </div>
+  `;
+  const d = DRIVERS_DB[Math.floor(Math.random() * DRIVERS_DB.length)];
+  document.getElementById('matched-driver-card').innerHTML = `
+    <div class="matched-driver">
+      <div class="md-avatar">🚗</div>
+      <div class="md-info">
+        <div class="name">${d.name}</div>
+        <div class="sub">★ ${d.rating} · ${d.rides.toLocaleString()} rides · ${d.vehicle}</div>
+        <div class="live">● Monitoring your flight now</div>
+      </div>
+    </div>
+  `;
+}
+
+function doConfirm() {
+  const ref = 'TRV-' + Math.floor(8900 + Math.random() * 99);
+  const d = DRIVERS_DB[Math.floor(Math.random() * DRIVERS_DB.length)];
+  document.getElementById('c-ref').textContent = ref;
+  document.getElementById('c-driver').innerHTML = `
+    <div style="font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300">${d.name}</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px">★ ${d.rating} · ${d.vehicle} · ${d.plate}</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);margin-top:4px">● Monitoring your flight in real time</div>
+  `;
+  for (let i = 1; i <= 4; i++) {
+    const p = document.getElementById('bstep-'+i);
+    if (p) p.className = 'step-panel';
+  }
+  document.getElementById('bstep-confirmed').className = 'step-panel active';
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById('dot-'+i);
+    if (dot) dot.className = 'step-dot done';
+  }
+}
+
+/* ─── TRACK MAP ─── */
+function initTrackMap() {
+  if (trackAnim) cancelAnimationFrame(trackAnim);
+  const canvas = document.getElementById('track-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  let t = 0;
+  // Route points (driver to pickup)
+  const routeX = [W*.1, W*.22, W*.38, W*.52, W*.64, W*.76, W*.86];
+  const routeY = [H*.72, H*.58, H*.48, H*.42, H*.5, H*.44, H*.38];
+  const destX = routeX[routeX.length-1], destY = routeY[routeY.length-1];
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    // Dark map bg
+    ctx.fillStyle = '#0c0c22'; ctx.fillRect(0,0,W,H);
+    // Blocks / buildings
+    const blocks = [[20,40,60,80],[90,20,50,90],[160,50,40,70],[220,30,70,50],[300,60,50,80],[350,20,30,60],[W*.1,H*.3,70,40],[W*.4,H*.6,50,30],[W*.6,H*.2,80,50]];
+    blocks.forEach(([x,y,w,h]) => {
+      ctx.fillStyle = 'rgba(255,255,255,0.03)';
+      ctx.fillRect(x,y,w,h);
+    });
+    // Streets
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 6;
+    [[0,H*.45,W,H*.45],[W*.35,0,W*.35,H],[W*.7,0,W*.7,H],[0,H*.75,W,H*.75]].forEach(([x1,y1,x2,y2]) => {
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+    // Route dashed
+    ctx.strokeStyle = 'rgba(201,169,110,.55)'; ctx.lineWidth = 2.5; ctx.setLineDash([7,5]);
+    ctx.beginPath(); ctx.moveTo(routeX[0],routeY[0]);
+    routeX.forEach((x,i) => ctx.lineTo(x,routeY[i]));
+    ctx.stroke(); ctx.setLineDash([]);
+    // Destination pin
+    ctx.beginPath(); ctx.arc(destX,destY,14,0,Math.PI*2); ctx.fillStyle='rgba(201,169,110,0.15)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(destX,destY,8,0,Math.PI*2); ctx.fillStyle='#c9a96e'; ctx.fill();
+    ctx.fillStyle='#0c0c22'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('You',destX,destY);
+    // Driver moving
+    const prog = Math.min(1, t * 0.0008);
+    const seg = Math.min(Math.floor(prog*(routeX.length-1)), routeX.length-2);
+    const frac = prog*(routeX.length-1) - seg;
+    const px = routeX[seg] + (routeX[seg+1]-routeX[seg]) * frac;
+    const py = routeY[seg] + (routeY[seg+1]-routeY[seg]) * frac;
+    // Car glow
+    ctx.beginPath(); ctx.arc(px,py,22,0,Math.PI*2); ctx.fillStyle='rgba(74,222,128,0.1)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(px,py,12,0,Math.PI*2); ctx.fillStyle='#4ade80'; ctx.fill();
+    ctx.fillStyle='#0c0c22'; ctx.font='11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🚗',px,py);
+    // ETA countdown
+    const etaMin = Math.max(1, Math.round((1 - prog) * 14));
+    const etaEl = document.getElementById('track-eta');
+    const etaBig = document.getElementById('eta-big');
+    const distEl = document.getElementById('track-dist');
+    if (etaEl) etaEl.textContent = etaMin + ' min';
+    if (etaBig) etaBig.textContent = etaMin;
+    if (distEl) distEl.textContent = (etaMin * 0.52).toFixed(1) + ' km';
+    t++;
+    trackAnim = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+/* ─── TRACK MESSAGING ─── */
+function sendMsg() {
+  const inp = document.getElementById('msg-input');
+  if (!inp || !inp.value.trim()) return;
+  const thread = document.getElementById('msg-thread');
+  const bubble = document.createElement('div');
+  bubble.style.cssText = 'background:var(--gold);color:var(--ink);border-radius:12px 12px 2px 12px;padding:10px 14px;font-size:13px;align-self:flex-end;max-width:80%;animation:fadeUp .25s ease';
+  bubble.textContent = inp.value;
+  thread.appendChild(bubble);
+  inp.value = '';
+  setTimeout(() => {
+    const reply = document.createElement('div');
+    reply.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:12px 12px 12px 2px;padding:10px 14px;font-size:13px;color:var(--muted);align-self:flex-start;max-width:80%;animation:fadeUp .25s ease;margin-top:6px';
+    reply.innerHTML = '<strong style="color:var(--white);font-weight:400">Ahmed K.</strong> — Understood, see you shortly ✓';
+    thread.appendChild(reply);
+    thread.scrollIntoView({behavior:'smooth',block:'end'});
+  }, 1200);
+  thread.scrollIntoView({behavior:'smooth',block:'end'});
+}
+function sendQuickMsg(msg) {
+  document.getElementById('msg-input').value = msg;
+  sendMsg();
+}
+function scrollToMsg() {
+  document.getElementById('msg-area').scrollIntoView({behavior:'smooth'});
+}
+
+/* ─── RIDES ─── */
+function renderRides(filter) {
+  const list = document.getElementById('rides-list');
+  const shown = filter === 'all' ? RIDES_DB : RIDES_DB.filter(r => r.status === filter);
+  list.innerHTML = shown.map(r => `
+    <div class="ride-card">
+      <div class="rc-top">
+        <div class="rc-head">
+          <div>
+            <div class="rc-id">${r.id}</div>
+            <span class="badge badge-${r.status==='active'?'live':r.status==='upcoming'?'assigned':'done'}" style="margin-top:6px;display:inline-flex">${r.status}</span>
+          </div>
+          <div class="rc-price">£${r.price}</div>
+        </div>
+        <div class="rc-route">${r.from} → ${r.to}</div>
+        <div class="rc-meta">
+          ${r.date} · ${r.pax} pax · ${r.dist}
+          ${r.flight !== '—' ? ' · ✈ ' + r.flight : ''}
+          ${r.rating ? ' · ' + '★'.repeat(r.rating) + '☆'.repeat(5-r.rating) : ''}
+        </div>
+      </div>
+      <div class="rc-bottom">
+        <div class="rc-driver">
+          <span style="font-size:16px">🚗</span>
+          ${r.driver || '<span style="color:var(--amber)">Awaiting driver</span>'}
+          ${r.driver ? `<span class="stars"><span class="star-f">★</span></span>` : ''}
+        </div>
+        <div class="rc-actions">
+          ${r.status==='active'?`<button class="rc-btn primary" onclick="goScreen('track')">Track →</button>`:''}
+          ${r.status==='completed'?`<button class="rc-btn" onclick="showReceipt('${r.id}')">Receipt</button>`:''}
+          ${r.status==='upcoming'?`<button class="rc-btn" onclick="alert('Booking modified!')">Modify</button>`:''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterRides(el, filter) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderRides(filter);
+}
+
+function showReceipt(id) {
+  const r = RIDES_DB.find(x => x.id === id);
+  if (!r) return;
+  const vat = Math.round(r.price * 0.2 / 1.2);
+  const net = r.price - vat;
+  document.getElementById('receipt-content').innerHTML = `
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)">Receipt</div>
+      <div style="font-family:'DM Mono',monospace;font-size:22px;letter-spacing:.15em;color:var(--gold);margin-top:4px">${r.id}</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;color:var(--gold);line-height:1;margin-top:8px">£${r.price}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">${r.date}</div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px">
+      <div class="qr" style="padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:var(--muted)">From</span><span style="font-family:'DM Mono',monospace;font-size:11px">${r.from}</span></div>
+      <div class="qr" style="padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:var(--muted)">To</span><span style="font-family:'DM Mono',monospace;font-size:11px">${r.to}</span></div>
+      <div class="qr" style="padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:var(--muted)">Driver</span><span style="color:var(--white)">${r.driver}</span></div>
+      <div class="qr" style="padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:var(--muted)">Vehicle</span><span style="color:var(--white)">${r.vehicle}</span></div>
+      <div class="qr" style="padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:var(--muted)">Net fare</span><span style="font-family:'DM Mono',monospace;font-size:11px">£${net}</span></div>
+      <div class="qr" style="padding:11px 14px;border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:var(--muted)">VAT (20%)</span><span style="font-family:'DM Mono',monospace;font-size:11px">£${vat}</span></div>
+      <div class="qr" style="padding:11px 14px;background:var(--gold-dim)"><span style="color:var(--white);font-weight:500">Total</span><span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--gold)">£${r.price}</span></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-outline" style="flex:1" onclick="alert('Downloading PDF…')">↓ Download PDF</button>
+      <button class="btn-gold" style="flex:1" onclick="closeSheet()">Done</button>
+    </div>
+  `;
+  document.getElementById('receipt-sheet').classList.add('open');
+}
+function closeSheet() { document.getElementById('receipt-sheet').classList.remove('open'); }
+
+/* ─── STAR RATING ─── */
+function rateStar(n) {
+  ratingSelected = n;
+  const stars = document.querySelectorAll('#star-rate span');
+  stars.forEach((s,i) => s.className = i < n ? 'lit' : '');
+  const btn = document.getElementById('rate-btn');
+  btn.style.opacity = '1';
+  btn.style.pointerEvents = 'auto';
+}
+function submitRating() {
+  const prompt = document.getElementById('rating-prompt');
+  prompt.style.opacity = '0';
+  prompt.style.transition = 'opacity .3s';
+  setTimeout(() => prompt.remove(), 300);
+}
+
+/* ─── CONCIERGE (CLAUDE) ─── */
+const SYS_PROMPT = `You are the Traversa Concierge — an expert, warm, professional AI assistant for a global premium private transfer service. Help clients with:
+- Booking advice (vehicle selection, route info, airports)
+- Flight monitoring (we automatically track all flights 24/7)
+- Pricing (Saloon £3.20/km, Executive MPV £4.10/km, Business SUV £4.80/km, First Class £9.80/km, plus airport surcharges and VAT)
+- Coverage: 190+ countries, 2,400+ airports, cruise ports worldwide
+- Cancellation: Free up to 24h before. 50% fee within 24h. Non-refundable under 2h.
+- Our drivers are vetted, background-checked, and maintain 4.95+ average ratings.
+Be concise, warm, premium in tone. Max 2-3 sentences per reply unless detail is needed.`;
+
+function initConciege() {
+  const chat = document.getElementById('conc-chat');
+  if (concMsgs.length === 0) {
+    addConcMsg('ai', "Hello, James. I'm your Traversa Concierge. How can I help you with your transfers today?");
+  }
+}
+
+function addConcMsg(role, text) {
+  const chat = document.getElementById('conc-chat');
+  const el = document.createElement('div');
+  el.className = 'chat-bubble ' + role + ' fade-up';
+  el.innerHTML = text;
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+  if (role === 'user') concMsgs.push({role:'user',content:text});
+}
+
+function showTyping() {
+  const chat = document.getElementById('conc-chat');
+  const el = document.createElement('div');
+  el.className = 'chat-bubble ai typing fade-up';
+  el.id = 'typing-ind';
+  el.innerHTML = '<div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+}
+function hideTyping() { const el = document.getElementById('typing-ind'); if (el) el.remove(); }
+
+async function callClaude(userMsg) {
+  concMsgs.push({role:'user',content:userMsg});
+  showTyping();
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:SYS_PROMPT,
+        messages:concMsgs.slice(-10)
+      })
+    });
+    const data = await res.json();
+    hideTyping();
+    const reply = data.content?.[0]?.text || "I'm sorry, I couldn't process that. Please try again.";
+    concMsgs.push({role:'assistant',content:reply});
+    addConcMsg('ai', reply);
+  } catch(e) {
+    hideTyping();
+    addConcMsg('ai', "I'm having trouble connecting right now. Please try again in a moment.");
+  }
+}
+
+function sendConc() {
+  const inp = document.getElementById('conc-input');
+  if (!inp || !inp.value.trim()) return;
+  const msg = inp.value.trim();
+  addConcMsg('user', msg);
+  inp.value = '';
+  callClaude(msg);
+}
+
+function qReply(msg) {
+  addConcMsg('user', msg);
+  callClaude(msg);
+}
+
+/* ─── INIT ─── */
+window.addEventListener('load', () => {
+  const di = document.getElementById('b-date');
+  if (di) di.value = new Date().toISOString().split('T')[0];
+  renderRides('all');
+});
+</script>
+</body>
+</html>

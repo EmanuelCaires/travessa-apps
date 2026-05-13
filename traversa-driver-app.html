@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traversa — Driver App</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#06060e;display:flex;align-items:center;justify-content:center;font-family:'Instrument Sans',sans-serif;overflow:hidden}
+:root{
+  --ink:#08080f;--deep:#0d0d1c;--surface:#121224;--card:#181830;--card2:#1e1e38;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --gold:#c9a96e;--gold2:#e2c48d;--gold-dim:rgba(201,169,110,0.12);--gold-glow:rgba(201,169,110,0.06);
+  --white:#f4f2ed;--muted:rgba(244,242,237,0.46);--dim:rgba(244,242,237,0.2);
+  --green:#4ade80;--green-d:rgba(74,222,128,0.12);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,0.1);
+  --red:#ef4444;--red-d:rgba(239,68,68,0.1);
+  --blue:#60a5fa;--blue-d:rgba(96,165,250,0.1);
+  --teal:#2dd4bf;--teal-d:rgba(45,212,191,0.1);
+}
+
+/* ── PHONE SHELL ── */
+.phone-wrap{display:flex;align-items:center;gap:32px}
+.phone-frame{
+  width:390px;height:844px;background:var(--ink);
+  border-radius:52px;border:1.5px solid rgba(255,255,255,0.1);
+  box-shadow:0 0 0 8px #0f0f1a,0 0 0 9px rgba(255,255,255,0.06),0 40px 80px rgba(0,0,0,0.8),0 0 60px rgba(201,169,110,0.04);
+  overflow:hidden;position:relative;display:flex;flex-direction:column;
+}
+.phone-notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:34px;background:var(--ink);border-radius:0 0 20px 20px;z-index:200;display:flex;align-items:center;justify-content:center;gap:8px}
+.notch-cam{width:10px;height:10px;border-radius:50%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.08)}
+.notch-face{width:26px;height:10px;border-radius:5px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.06)}
+.phone-status{height:44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 6px;flex-shrink:0;position:relative;z-index:10}
+.status-time{font-family:'DM Mono',monospace;font-size:15px;font-weight:400;color:var(--white)}
+.status-icons{display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(244,242,237,0.7)}
+.signal{display:flex;align-items:flex-end;gap:1.5px;height:10px}
+.signal span{background:rgba(244,242,237,0.7);border-radius:1px;width:2.5px}
+.signal span:nth-child(1){height:4px}.signal span:nth-child(2){height:6px}.signal span:nth-child(3){height:8px}.signal span:nth-child(4){height:10px}
+.battery-icon{width:22px;height:11px;border:1px solid rgba(244,242,237,0.5);border-radius:2.5px;position:relative;display:flex;align-items:center;padding:1.5px}
+.battery-icon::after{content:'';position:absolute;right:-4px;top:50%;transform:translateY(-50%);width:2.5px;height:5px;background:rgba(244,242,237,0.5);border-radius:0 1px 1px 0}
+.battery-fill{background:#4ade80;border-radius:1px;height:100%;width:82%}
+
+.app{flex:1;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;transition:transform .38s cubic-bezier(.4,0,.2,1),opacity .35s ease;overflow:hidden}
+.screen.hidden-left{transform:translateX(-100%);opacity:0;pointer-events:none}
+.screen.hidden-right{transform:translateX(100%);opacity:0;pointer-events:none}
+.screen.active{transform:translateX(0);opacity:1}
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.scroll-area::-webkit-scrollbar{display:none}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{height:78px;background:rgba(13,13,28,0.97);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;align-items:flex-start;padding:0;flex-shrink:0;position:relative;z-index:100}
+.bn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding-top:10px;cursor:pointer;transition:all .2s;border:none;background:none}
+.bn-ico{font-size:20px;transition:transform .2s}
+.bn-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);transition:color .2s}
+.bn.active .bn-lbl{color:var(--gold)}
+.bn.active .bn-ico{transform:translateY(-1px)}
+.bn:active .bn-ico{transform:scale(.88)}
+
+/* ── SHARED ── */
+.mono-label{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+.card-block{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;padding:3px 8px;border-radius:4px;text-transform:uppercase}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.badge-online{background:var(--green-d);color:var(--green)}.badge-online::before{background:var(--green);animation:pulse 2s infinite}
+.badge-offline{background:rgba(255,255,255,0.05);color:var(--muted)}.badge-offline::before{background:var(--muted)}
+.badge-job{background:var(--amber-d);color:var(--amber)}.badge-job::before{background:var(--amber);animation:pulse 2s infinite}
+.badge-active{background:var(--green-d);color:var(--green)}.badge-active::before{background:var(--green)}
+.badge-done{background:rgba(255,255,255,0.05);color:var(--muted)}.badge-done::before{background:var(--muted)}
+.badge-gold{background:var(--gold-dim);color:var(--gold)}.badge-gold::before{background:var(--gold)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.4)}50%{box-shadow:0 0 0 4px rgba(74,222,128,0)}}
+.btn-gold{background:var(--gold);color:var(--ink);border:none;border-radius:12px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:15px 24px;cursor:pointer;transition:all .18s;width:100%;display:block;text-align:center}
+.btn-gold:active{transform:scale(.97);background:var(--gold2)}
+.btn-green{background:var(--green-d);border:1px solid var(--green);border-radius:12px;color:var(--green);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:14px 24px;cursor:pointer;transition:all .18s;width:100%;display:block;text-align:center}
+.btn-green:active{background:rgba(74,222,128,.22)}
+.btn-red{background:var(--red-d);border:1px solid rgba(239,68,68,.35);border-radius:12px;color:var(--red);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:14px;cursor:pointer;transition:all .18s;display:block;text-align:center}
+.btn-red:active{background:rgba(239,68,68,.2)}
+.btn-outline{background:none;border:1px solid var(--border2);border-radius:12px;color:var(--white);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:14px 24px;cursor:pointer;transition:all .18s;width:100%;display:block;text-align:center}
+.btn-outline:active{border-color:var(--gold);color:var(--gold)}
+.btn-ghost{background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:9px 14px;cursor:pointer;transition:all .18s;display:inline-block}
+.btn-ghost:active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold)}
+.row-between{display:flex;justify-content:space-between;align-items:center}
+.row-center{display:flex;align-items:center;gap:10px}
+.tag{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;background:var(--gold-dim);color:var(--gold);border-radius:3px}
+.earn-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px}
+.earn-row:last-child{border-bottom:none}
+.earn-row .l{color:var(--muted)}
+.earn-row .r{font-family:'DM Mono',monospace;font-size:12px;color:var(--white)}
+.earn-row.gold .r{color:var(--gold)}
+.earn-row.red .r{color:var(--red)}
+.earn-row.green .r{color:var(--green)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.fade-up{animation:fadeUp .35s ease}
+.scale-in{animation:scaleIn .4s ease}
+.panel-label{writing-mode:vertical-rl;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(201,169,110,0.2);margin-top:20px;user-select:none}
+
+/* ══════════════════════════════════
+   SPLASH / ONBOARDING
+══════════════════════════════════ */
+#screen-splash{background:var(--ink);justify-content:center;align-items:center}
+.splash-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.sg1{position:absolute;width:420px;height:420px;background:radial-gradient(circle,rgba(74,222,128,0.06),transparent 70%);top:-80px;left:-80px}
+.sg2{position:absolute;width:300px;height:300px;background:radial-gradient(circle,rgba(201,169,110,0.07),transparent 70%);bottom:-60px;right:-60px}
+.splash-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:40px 32px;width:100%}
+.splash-icon{font-size:56px;margin-bottom:20px;animation:scaleIn .7s .1s both}
+.splash-logo{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;letter-spacing:.14em;color:var(--white);animation:fadeUp .8s .25s both}
+.splash-logo span{color:var(--gold)}
+.splash-sub{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-top:6px;margin-bottom:48px;animation:fadeUp .8s .35s both}
+.splash-form{width:100%;display:flex;flex-direction:column;gap:12px;animation:fadeUp .8s .45s both}
+.form-label-s{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;display:block}
+.input-field{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--white);font-family:'DM Mono',monospace;font-size:14px;padding:14px;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.input-field:focus{border-color:var(--gold)}
+.input-field::placeholder{color:var(--muted)}
+.splash-note{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);text-align:center;line-height:1.5;animation:fadeUp .8s .6s both;margin-top:4px}
+
+/* ══════════════════════════════════
+   JOBS SCREEN
+══════════════════════════════════ */
+#screen-jobs{background:var(--ink)}
+.jobs-header{padding:16px 20px 14px;flex-shrink:0}
+.jh-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.jh-name{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;line-height:1.1}
+.jh-name em{font-style:italic;color:var(--gold)}
+.jh-name small{display:block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.online-toggle{display:flex;align-items:center;gap:8px;cursor:pointer}
+.ot-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--muted)}
+.ot-track{width:48px;height:26px;background:var(--border2);border-radius:13px;position:relative;transition:background .25s}
+.ot-track.on{background:var(--green)}
+.ot-thumb{position:absolute;width:20px;height:20px;background:var(--white);border-radius:50%;top:3px;left:3px;transition:transform .25s;box-shadow:0 1px 4px rgba(0,0,0,0.4)}
+.ot-track.on .ot-thumb{transform:translateX(22px)}
+.today-strip{display:flex;gap:0;background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);flex-shrink:0}
+.ts-item{flex:1;padding:10px 0;display:flex;flex-direction:column;align-items:center;gap:2px;border-right:1px solid var(--border)}
+.ts-item:last-child{border-right:none}
+.ts-val{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;color:var(--gold);line-height:1}
+.ts-lbl{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.job-list-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.job-tabs{display:flex;padding:12px 20px 0;gap:12px;flex-shrink:0}
+.job-tab{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer;padding-bottom:10px;border-bottom:2px solid transparent;transition:all .2s}
+.job-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* JOB CARDS */
+.job-card{margin:0 20px 12px;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;position:relative}
+.job-card.urgent{border-color:rgba(239,68,68,.35)}
+.job-card.new-job{border-color:rgba(245,158,11,.35);animation:fadeUp .4s ease}
+.jc-timer-bar{height:3px;background:var(--amber);transform-origin:left;transition:transform linear}
+.jc-body{padding:16px}
+.jc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.jc-id{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold)}
+.jc-payout{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:var(--gold);line-height:1;text-align:right}
+.jc-payout small{display:block;font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);font-weight:400;line-height:1.4}
+.jc-route{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;line-height:1.25;margin-bottom:10px}
+.jc-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.jc-meta-item{display:flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+.jc-meta-item em{color:var(--white);font-style:normal}
+.jc-flight{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.jf-num{font-family:'DM Mono',monospace;font-size:13px;color:var(--white)}
+.jf-info{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px}
+.jf-status{font-family:'DM Mono',monospace;font-size:10px;margin-top:4px}
+.jc-actions{display:flex;gap:8px}
+.timer-chip{font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);background:var(--amber-d);border:1px solid rgba(245,158,11,.3);border-radius:6px;padding:3px 9px;display:inline-block}
+
+/* ══════════════════════════════════
+   ACTIVE JOB SCREEN
+══════════════════════════════════ */
+#screen-active{background:var(--ink)}
+.active-header{padding:14px 20px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.ah-top{display:flex;justify-content:space-between;align-items:center}
+.active-map-wrap{height:260px;flex-shrink:0;position:relative;background:#0c0c22}
+.map-overlay{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none}
+.map-chip{background:rgba(10,10,22,0.88);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--white)}
+.map-chip em{color:var(--gold);font-style:normal}
+.nav-instruction{position:absolute;bottom:12px;left:12px;right:12px;background:rgba(10,10,22,0.92);backdrop-filter:blur(12px);border:1px solid var(--gold);border-radius:10px;padding:10px 14px;pointer-events:none;display:flex;align-items:center;gap:10px}
+.ni-arrow{font-size:20px;flex-shrink:0}
+.ni-text{font-family:'DM Mono',monospace;font-size:11px;color:var(--white)}
+.ni-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px}
+.active-content{flex:1;overflow-y:auto}
+.active-content::-webkit-scrollbar{display:none}
+
+/* CLIENT CARD */
+.client-strip{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;gap:14px;align-items:center}
+.client-avatar{width:48px;height:48px;border-radius:50%;background:var(--blue-d);border:1px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.client-info{flex:1}
+.client-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300}
+.client-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+.client-note{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);margin-top:3px}
+.client-actions{display:flex;flex-direction:column;gap:6px}
+.c-act-btn{width:38px;height:38px;border-radius:10px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .18s}
+.c-act-btn:active{background:var(--gold-dim);border-color:var(--gold)}
+
+/* FLIGHT PANEL */
+.flight-panel{padding:14px 20px;border-bottom:1px solid var(--border)}
+.fp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.fp-num{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300}
+.fp-cols{display:flex;gap:0}
+.fp-col{flex:1;padding-right:12px}
+.fp-col+.fp-col{padding-left:12px;padding-right:0;border-left:1px solid var(--border)}
+.fp-lbl{font-family:'DM Mono',monospace;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.fp-val{font-family:'DM Mono',monospace;font-size:13px;color:var(--white);margin-top:2px}
+.fp-alert{margin-top:10px;background:var(--amber-d);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:8px 12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--amber)}
+
+/* JOURNEY STATUS */
+.journey-status{padding:14px 20px;border-bottom:1px solid var(--border)}
+.js-steps{display:flex;gap:0;overflow-x:auto;padding-bottom:4px}
+.js-steps::-webkit-scrollbar{display:none}
+.js-step{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:70px}
+.js-step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;border:1px solid var(--border);color:var(--muted);transition:all .3s}
+.js-step-circle.done{background:var(--green);border-color:var(--green);color:#0a0a14}
+.js-step-circle.now{background:var(--gold);border-color:var(--gold);color:#0a0a14;animation:pulse-gold 2s infinite}
+@keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 rgba(201,169,110,.4)}50%{box-shadow:0 0 0 6px rgba(201,169,110,0)}}
+.js-step-label{font-family:'DM Mono',monospace;font-size:8.5px;color:var(--muted);text-align:center;letter-spacing:.05em;line-height:1.3}
+.js-step-label.now{color:var(--gold)}
+.js-step-label.done{color:var(--green)}
+.js-connector{flex:1;height:1px;background:var(--border);margin-top:14px;min-width:12px}
+.js-connector.done{background:var(--green)}
+.js-row{display:flex;align-items:flex-start}
+
+/* JOB DETAILS */
+.job-detail-rows{padding:14px 20px;border-bottom:1px solid var(--border)}
+
+/* ACTION BUTTONS */
+.action-strip{padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.action-row{display:flex;gap:10px}
+
+/* ══════════════════════════════════
+   EARNINGS SCREEN
+══════════════════════════════════ */
+#screen-earnings{background:var(--ink)}
+.earnings-header{padding:16px 20px 14px;flex-shrink:0}
+.period-tabs{display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:12px}
+.period-tab{flex:1;padding:10px 0;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .2s}
+.period-tab.active{background:var(--gold);color:var(--ink)}
+.earnings-big{padding:20px 20px 0;text-align:center}
+.eb-amount{font-family:'Cormorant Garamond',serif;font-size:60px;font-weight:300;color:var(--gold);line-height:1}
+.eb-amount small{font-size:36px}
+.eb-sub{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--muted);margin-top:6px}
+.eb-jobs{display:flex;justify-content:center;gap:24px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.eb-stat{display:flex;flex-direction:column;align-items:center;gap:2px}
+.eb-stat-val{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--white)}
+.eb-stat-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
+.chart-section{padding:16px 20px}
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.chart-label-row{display:flex;justify-content:space-between;margin-top:8px;padding:0 4px}
+.chart-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
+.breakdown-section{padding:0 20px 16px}
+.payout-history{padding:0 20px 24px}
+.ph-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .18s}
+.ph-item:active{border-color:rgba(201,169,110,.3);background:var(--card2)}
+.ph-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);flex:1}
+.ph-jobs{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim)}
+.ph-amount{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--gold)}
+.ph-status{font-family:'DM Mono',monospace;font-size:9px;padding:3px 8px;border-radius:4px}
+.ph-status.paid{background:var(--green-d);color:var(--green)}
+.ph-status.pending{background:var(--amber-d);color:var(--amber)}
+
+/* ══════════════════════════════════
+   PROFILE SCREEN
+══════════════════════════════════ */
+#screen-profile{background:var(--ink)}
+.profile-hero{padding:20px 20px 16px;background:linear-gradient(to bottom,rgba(74,222,128,0.05),transparent);border-bottom:1px solid var(--border)}
+.ph-top{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.ph-avatar{width:64px;height:64px;border-radius:50%;background:var(--green-d);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:28px}
+.ph-name-block .name{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300}
+.ph-name-block .id{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+.rating-big{display:flex;align-items:center;gap:12px}
+.rating-num{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:300;color:var(--gold);line-height:1}
+.rating-stars{display:flex;gap:2px;font-size:16px;color:var(--gold)}
+.perf-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:16px}
+.perf-cell{background:var(--card);padding:12px;text-align:center}
+.perf-val{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;color:var(--white);display:block}
+.perf-lbl{font-family:'DM Mono',monospace;font-size:8.5px;color:var(--muted);letter-spacing:.08em;margin-top:3px;display:block}
+.perf-val.green{color:var(--green)}
+.doc-section{padding:16px 20px}
+.doc-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer}
+.doc-item:last-child{border-bottom:none}
+.doc-icon{font-size:18px;width:36px;height:36px;border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.doc-info{flex:1}
+.doc-name{font-size:13px;color:var(--white)}
+.doc-exp{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px}
+.doc-badge{font-family:'DM Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px}
+.doc-badge.valid{background:var(--green-d);color:var(--green)}
+.doc-badge.expiring{background:var(--amber-d);color:var(--amber)}
+.vehicle-section{padding:0 20px 16px}
+.vehicle-card-display{background:linear-gradient(135deg,#1a1a30,#0f2f1a);border:1px solid rgba(74,222,128,0.15);border-radius:16px;padding:18px}
+.vc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.vc-icon{font-size:32px}
+.vc-badge{font-family:'DM Mono',monospace;font-size:9px;color:var(--green);background:var(--green-d);padding:3px 9px;border-radius:4px;border:1px solid rgba(74,222,128,.2)}
+.vc-make{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300}
+.vc-plate{font-family:'DM Mono',monospace;font-size:16px;letter-spacing:.2em;color:var(--gold);margin-top:4px}
+.vc-details{display:flex;gap:16px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)}
+.vc-det{display:flex;flex-direction:column;gap:2px}
+.vc-det-lbl{font-family:'DM Mono',monospace;font-size:8.5px;color:var(--dim)}
+.vc-det-val{font-family:'DM Mono',monospace;font-size:12px;color:var(--white)}
+.pref-row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer}
+.pref-row:last-child{border-bottom:none}
+.pref-left{display:flex;align-items:center;gap:10px;font-size:14px}
+.pref-icon{font-size:17px;width:22px;text-align:center}
+.pref-right{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.pref-right::after{content:'›';font-size:16px;color:var(--dim)}
+.toggle{width:42px;height:24px;background:var(--border2);border-radius:12px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--green)}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:var(--white);top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.toggle.on::after{transform:translateX(18px)}
+.bottom-sheet{position:absolute;inset:0;background:rgba(0,0,0,0.72);z-index:500;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s}
+.bottom-sheet.open{opacity:1;pointer-events:all}
+.sheet-content{width:100%;background:var(--deep);border-radius:24px 24px 0 0;padding:22px 20px 40px;max-height:85%;overflow-y:auto;animation:slideUp .35s ease}
+.sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 20px}
+</style>
+</head>
+<body>
+
+<div class="phone-wrap">
+<div class="phone-frame">
+  <div class="phone-notch"><div class="notch-face"></div><div class="notch-cam"></div></div>
+  <div class="phone-status">
+    <div class="status-time" id="status-clock">09:41</div>
+    <div class="status-icons">
+      <div class="signal"><span></span><span></span><span></span><span></span></div>
+      <span style="font-size:11px;margin-left:2px">5G</span>
+      <div class="battery-icon"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="app">
+
+    <!-- ══ SPLASH ══ -->
+    <div class="screen active" id="screen-splash">
+      <div class="splash-bg"><div class="sg1"></div><div class="sg2"></div></div>
+      <div class="splash-inner">
+        <div class="splash-icon">🚗</div>
+        <div class="splash-logo">tra<span>·</span>versa</div>
+        <div class="splash-sub">Driver Partner App</div>
+        <div class="splash-form">
+          <div>
+            <div class="form-label-s">Driver ID or Phone</div>
+            <input class="input-field" placeholder="DRV-001 or +44 7700…" id="drv-login-input">
+          </div>
+          <div>
+            <div class="form-label-s">PIN</div>
+            <input class="input-field" type="password" placeholder="••••••" id="drv-pin-input" onkeydown="if(event.key==='Enter')drvLogin()">
+          </div>
+          <button class="btn-gold" onclick="drvLogin()">Sign In →</button>
+          <div class="splash-note">Need access? Contact Traversa Operations<br>+44 20 7946 0000 · ops@traversa.com</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ JOBS ══ -->
+    <div class="screen hidden-right" id="screen-jobs">
+      <div class="jobs-header" style="flex-shrink:0">
+        <div class="jh-top">
+          <div class="jh-name">
+            Available <em>Jobs</em>
+            <small>London · Heathrow Area</small>
+          </div>
+          <div class="online-toggle" onclick="toggleOnline()">
+            <div class="ot-label" id="ot-label">Online</div>
+            <div class="ot-track on" id="ot-track"><div class="ot-thumb"></div></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge badge-online" id="status-badge">Online</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">Mercedes E-Class · LK71 BWX</span>
+        </div>
+      </div>
+
+      <div class="today-strip">
+        <div class="ts-item">
+          <div class="ts-val" id="ts-jobs">4</div>
+          <div class="ts-lbl">Jobs Today</div>
+        </div>
+        <div class="ts-item">
+          <div class="ts-val" id="ts-earn">£312</div>
+          <div class="ts-lbl">Earned</div>
+        </div>
+        <div class="ts-item">
+          <div class="ts-val" id="ts-km">94</div>
+          <div class="ts-lbl">KM</div>
+        </div>
+        <div class="ts-item">
+          <div class="ts-val" id="ts-rating">4.98</div>
+          <div class="ts-lbl">Rating</div>
+        </div>
+      </div>
+
+      <div class="job-list-wrap">
+        <div class="job-tabs" style="flex-shrink:0">
+          <div class="job-tab active" onclick="jobTabSwitch(this,'available')">Available <span id="avail-count" style="color:var(--amber)">(3)</span></div>
+          <div class="job-tab" onclick="jobTabSwitch(this,'today')">Today's Jobs</div>
+          <div class="job-tab" onclick="jobTabSwitch(this,'scheduled')">Scheduled</div>
+        </div>
+        <div class="scroll-area" id="job-list-scroll"></div>
+      </div>
+    </div>
+
+    <!-- ══ ACTIVE JOB ══ -->
+    <div class="screen hidden-right" id="screen-active">
+      <div class="active-header">
+        <div class="ah-top">
+          <div>
+            <div class="mono-label">Active Job</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:300;margin-top:2px">TRV-<em style="color:var(--gold);font-style:italic">8821</em></div>
+          </div>
+          <span class="badge badge-active">In Progress</span>
+        </div>
+      </div>
+
+      <div class="active-map-wrap" style="flex-shrink:0">
+        <canvas id="driver-map" width="390" height="260"></canvas>
+        <div class="map-overlay">
+          <div class="map-chip">ETA: <em id="active-eta">8 min</em></div>
+          <div class="map-chip"><em id="active-dist">3.2 km</em></div>
+        </div>
+        <div class="nav-instruction">
+          <div class="ni-arrow">↱</div>
+          <div>
+            <div class="ni-text" id="nav-instr">Turn right onto A4</div>
+            <div class="ni-sub" id="nav-sub">In 0.4 mi · Continue 14 mi</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="active-content">
+        <!-- JOURNEY STATUS BAR -->
+        <div class="journey-status">
+          <div class="mono-label" style="margin-bottom:12px">Journey Status</div>
+          <div class="js-row" id="js-steps">
+            <!-- rendered by JS -->
+          </div>
+        </div>
+
+        <!-- CLIENT -->
+        <div class="client-strip">
+          <div class="client-avatar">👤</div>
+          <div class="client-info">
+            <div class="client-name">James Whitmore</div>
+            <div class="client-meta">2 passengers · 2 bags · VIP client</div>
+            <div class="client-note">Prefers quiet ride · Water requested</div>
+          </div>
+          <div class="client-actions">
+            <div class="c-act-btn" title="Call">📞</div>
+            <div class="c-act-btn" title="Message" onclick="openMsgSheet()">💬</div>
+          </div>
+        </div>
+
+        <!-- FLIGHT -->
+        <div class="flight-panel">
+          <div class="fp-head">
+            <div class="fp-num">BA0117</div>
+            <span class="badge badge-active">On Time</span>
+          </div>
+          <div class="fp-cols">
+            <div class="fp-col"><div class="fp-lbl">From</div><div class="fp-val">JFK</div></div>
+            <div class="fp-col"><div class="fp-lbl">Arrives LHR</div><div class="fp-val">21:15</div></div>
+            <div class="fp-col"><div class="fp-lbl">Gate</div><div class="fp-val">B42</div></div>
+            <div class="fp-col"><div class="fp-lbl">Terminal</div><div class="fp-val">T5</div></div>
+          </div>
+          <div class="fp-alert" style="display:none" id="fp-alert">⚡ Flight delayed — ETA updated automatically</div>
+        </div>
+
+        <!-- JOB DETAILS -->
+        <div class="job-detail-rows">
+          <div class="mono-label" style="margin-bottom:10px">Journey Details</div>
+          <div class="earn-row"><span class="l">Pickup</span><span class="r">Heathrow T5, Arrivals</span></div>
+          <div class="earn-row"><span class="l">Drop-off</span><span class="r">The Connaught, Mayfair</span></div>
+          <div class="earn-row"><span class="l">Distance</span><span class="r">28 km</span></div>
+          <div class="earn-row"><span class="l">Name board</span><span class="r">MR J WHITMORE</span></div>
+          <div class="earn-row gold"><span class="l">Your payout</span><span class="r">£73</span></div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="action-strip">
+          <div id="job-action-buttons"></div>
+          <div class="action-row">
+            <button class="btn-ghost" style="flex:1;text-align:center" onclick="showDelay()">⚠️ Report Delay</button>
+            <button class="btn-ghost" style="flex:1;text-align:center" onclick="alert('Connecting to ops…')">🎧 Call Ops</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MESSAGE SHEET -->
+      <div class="bottom-sheet" id="msg-sheet" onclick="closeMsgSheet()">
+        <div class="sheet-content" onclick="event.stopPropagation()">
+          <div class="sheet-handle"></div>
+          <div class="mono-label" style="margin-bottom:12px">Message James W.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+            <div class="btn-ghost" style="font-size:10px" onclick="drvQuickMsg('On my way to arrivals')">On my way</div>
+            <div class="btn-ghost" style="font-size:10px" onclick="drvQuickMsg('At arrivals — black E-Class')">At arrivals</div>
+            <div class="btn-ghost" style="font-size:10px" onclick="drvQuickMsg('5 minutes away')">5 min away</div>
+          </div>
+          <div style="display:flex;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;padding:4px 4px 4px 14px;align-items:center">
+            <input id="drv-msg-input" placeholder="Message client…" style="flex:1;background:none;border:none;color:var(--white);font-family:'Instrument Sans',sans-serif;font-size:14px;outline:none;padding:8px 0" onkeydown="if(event.key==='Enter')sendDrvMsg()">
+            <div onclick="sendDrvMsg()" style="background:var(--gold);border:none;border-radius:9px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;flex-shrink:0">↑</div>
+          </div>
+          <div id="drv-msg-thread" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+        </div>
+      </div>
+
+      <!-- COMPLETE SHEET -->
+      <div class="bottom-sheet" id="complete-sheet" onclick="closeCompleteSheet()">
+        <div class="sheet-content" onclick="event.stopPropagation()">
+          <div class="sheet-handle"></div>
+          <div style="text-align:center;margin-bottom:20px">
+            <div style="font-size:56px;animation:scaleIn .5s .1s both;display:block">✅</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;margin-top:12px">Job Complete</div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">TRV-8821 · James Whitmore</div>
+          </div>
+          <div style="text-align:center;margin-bottom:20px">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:4px">Your Payout</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:56px;font-weight:300;color:var(--gold);line-height:1">£73</div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">+ added to today's total</div>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px">
+            <div class="earn-row" style="padding:8px 0"><span class="l">Distance driven</span><span class="r">28 km</span></div>
+            <div class="earn-row" style="padding:8px 0"><span class="l">Duration</span><span class="r">34 min</span></div>
+            <div class="earn-row" style="padding:8px 0"><span class="l">Client rating</span><span class="r" style="color:var(--gold)">★ 5.0</span></div>
+          </div>
+          <button class="btn-gold" onclick="goBack()">Back to Jobs →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ EARNINGS ══ -->
+    <div class="screen hidden-right" id="screen-earnings">
+      <div class="earnings-header" style="flex-shrink:0">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300">My <em style="color:var(--gold);font-style:italic">Earnings</em></div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px">Commission: 82% driver · 18% Traversa</div>
+        <div class="period-tabs" id="period-tabs">
+          <div class="period-tab active" onclick="switchPeriod(this,'today')">Today</div>
+          <div class="period-tab" onclick="switchPeriod(this,'week')">This Week</div>
+          <div class="period-tab" onclick="switchPeriod(this,'month')">This Month</div>
+        </div>
+      </div>
+      <div class="scroll-area">
+        <div class="earnings-big">
+          <div class="eb-amount"><small>£</small><span id="earn-amount">312</span></div>
+          <div class="eb-sub" id="earn-sub">TODAY'S EARNINGS</div>
+          <div class="eb-jobs">
+            <div class="eb-stat"><div class="eb-stat-val" id="earn-jobs">4</div><div class="eb-stat-lbl">Jobs</div></div>
+            <div class="eb-stat"><div class="eb-stat-val" id="earn-km">94</div><div class="eb-stat-lbl">KM</div></div>
+            <div class="eb-stat"><div class="eb-stat-val" id="earn-hrs">6.2</div><div class="eb-stat-lbl">Hours</div></div>
+            <div class="eb-stat"><div class="eb-stat-val" id="earn-avg" style="color:var(--gold)">£78</div><div class="eb-stat-lbl">Avg/Job</div></div>
+          </div>
+        </div>
+        <div class="chart-section">
+          <div class="chart-wrap">
+            <div class="mono-label" style="margin-bottom:12px" id="chart-title">Hourly Breakdown</div>
+            <canvas id="earn-chart" width="310" height="120"></canvas>
+            <div class="chart-label-row" id="chart-labels"></div>
+          </div>
+        </div>
+        <div class="breakdown-section">
+          <div class="mono-label" style="margin-bottom:10px">Breakdown</div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+            <div class="earn-row" style="padding:12px 16px"><span class="l">Gross fares</span><span class="r" id="bd-gross">£381</span></div>
+            <div class="earn-row" style="padding:12px 16px"><span class="l">Traversa commission (18%)</span><span class="r" id="bd-comm" style="color:var(--red)">−£68.58</span></div>
+            <div class="earn-row" style="padding:12px 16px"><span class="l">Tips received</span><span class="r" id="bd-tips" style="color:var(--green)">+£20</span></div>
+            <div class="earn-row" style="padding:12px 16px;background:var(--gold-dim)"><span class="l" style="color:var(--white)">Net payout</span><span class="r" id="bd-net" style="color:var(--gold);font-size:14px">£332.42</span></div>
+          </div>
+        </div>
+        <div class="payout-history">
+          <div class="mono-label" style="margin-bottom:10px">Recent Payouts</div>
+          <div id="payout-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PROFILE ══ -->
+    <div class="screen hidden-right" id="screen-profile">
+      <div class="scroll-area" style="height:100%">
+        <div class="profile-hero">
+          <div class="ph-top">
+            <div class="ph-avatar">🚗</div>
+            <div class="ph-name-block">
+              <div class="name">Ahmed Karimi</div>
+              <div class="id">DRV-001 · London</div>
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <span class="badge badge-online">Online</span>
+                <span class="badge badge-gold">Elite Driver</span>
+              </div>
+            </div>
+          </div>
+          <div class="rating-big">
+            <div class="rating-num">4.98</div>
+            <div>
+              <div class="rating-stars">★★★★★</div>
+              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">1,247 rides · Since Mar 2021</div>
+            </div>
+          </div>
+          <div class="perf-grid">
+            <div class="perf-cell"><span class="perf-val green">94%</span><span class="perf-lbl">Acceptance</span></div>
+            <div class="perf-cell"><span class="perf-val green">99.2%</span><span class="perf-lbl">Completion</span></div>
+            <div class="perf-cell"><span class="perf-val green">97.4%</span><span class="perf-lbl">On Time</span></div>
+          </div>
+        </div>
+
+        <!-- VEHICLE -->
+        <div class="vehicle-section" style="padding-top:16px">
+          <div class="mono-label" style="margin-bottom:10px">My Vehicle</div>
+          <div class="vehicle-card-display">
+            <div class="vc-top">
+              <div class="vc-icon">🚗</div>
+              <div class="vc-badge">Verified</div>
+            </div>
+            <div class="vc-make">Mercedes-Benz E-Class</div>
+            <div class="vc-plate">LK71 BWX</div>
+            <div class="vc-details">
+              <div class="vc-det"><div class="vc-det-lbl">Year</div><div class="vc-det-val">2022</div></div>
+              <div class="vc-det"><div class="vc-det-lbl">Colour</div><div class="vc-det-val">Obsidian Black</div></div>
+              <div class="vc-det"><div class="vc-det-lbl">Class</div><div class="vc-det-val">Saloon + Exec</div></div>
+              <div class="vc-det"><div class="vc-det-lbl">Capacity</div><div class="vc-det-val">1–4 pax</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DOCUMENTS -->
+        <div class="doc-section">
+          <div class="mono-label" style="margin-bottom:10px">Documents</div>
+          <div id="docs-list"></div>
+        </div>
+
+        <!-- PREFERENCES -->
+        <div style="padding:0 20px 16px">
+          <div class="mono-label" style="margin-bottom:10px">Job Preferences</div>
+          <div class="pref-row">
+            <div class="pref-left"><span class="pref-icon">🔔</span>New job notifications</div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-left"><span class="pref-icon">✈️</span>Flight delay alerts</div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-left"><span class="pref-icon">🌍</span>Accept international clients</div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-left"><span class="pref-icon">🚢</span>Cruise port jobs</div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="pref-row">
+            <div class="pref-left"><span class="pref-icon">📞</span>Call before pickup</div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <!-- ACCOUNT -->
+        <div style="padding:0 20px 32px">
+          <div class="mono-label" style="margin-bottom:10px">Account</div>
+          <div class="pref-row"><div class="pref-left"><span class="pref-icon">🏦</span>Bank details</div><div class="pref-right">Barclays ••••4892</div></div>
+          <div class="pref-row"><div class="pref-left"><span class="pref-icon">📋</span>Weekly statements</div><div class="pref-right">Email</div></div>
+          <div class="pref-row"><div class="pref-left"><span class="pref-icon">🔒</span>Change PIN</div><div class="pref-right">Update</div></div>
+          <div class="pref-row"><div class="pref-left"><span class="pref-icon">📞</span>Contact Traversa ops</div><div class="pref-right">Call</div></div>
+          <div class="pref-row" style="color:var(--red)"><div class="pref-left"><span class="pref-icon">↩</span>Sign out</div><div style="font-size:16px;color:var(--dim)">›</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /app -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav" id="bottom-nav" style="display:none">
+    <button class="bn active" id="bn-jobs" onclick="navTo('jobs')">
+      <span class="bn-ico">💼</span><span class="bn-lbl">Jobs</span>
+    </button>
+    <button class="bn" id="bn-active" onclick="navTo('active')">
+      <span class="bn-ico" style="background:var(--green);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:#0a0a14;font-size:22px;margin-top:-18px;box-shadow:0 4px 16px rgba(74,222,128,0.35)">🗺</span>
+      <span class="bn-lbl">Navigate</span>
+    </button>
+    <button class="bn" id="bn-earnings" onclick="navTo('earnings')">
+      <span class="bn-ico">💷</span><span class="bn-lbl">Earnings</span>
+    </button>
+    <button class="bn" id="bn-profile" onclick="navTo('profile')">
+      <span class="bn-ico">👤</span><span class="bn-lbl">Profile</span>
+    </button>
+  </div>
+
+</div><!-- /phone-frame -->
+<div class="panel-label">TRAVERSA DRIVER APP</div>
+</div>
+
+<script>
+/* ─── STATE ─── */
+let currentScreen = 'splash';
+let isOnline = true;
+let jobStep = 0; // 0=en route to pickup, 1=at pickup, 2=in journey, 3=complete
+let driverMapAnim = null;
+let currentPeriod = 'today';
+let currentJobTab = 'available';
+let jobTimers = {};
+
+/* ─── DATA ─── */
+const DOCS = [
+  {icon:'🪪', name:'PCO Licence', exp:'Exp 12 Dec 2026', status:'valid'},
+  {icon:'🔍', name:'DBS Certificate', exp:'Exp 01 Mar 2027', status:'valid'},
+  {icon:'🔧', name:'MOT Certificate', exp:'Exp 08 Aug 2026', status:'valid'},
+  {icon:'🛡', name:'Public Liability Insurance', exp:'Exp 30 Nov 2026', status:'valid'},
+  {icon:'📝', name:'Vehicle Registration', exp:'Exp 01 Jan 2028', status:'valid'},
+  {icon:'🪪', name:'Driver\'s Licence (DVLA)', exp:'Exp 22 Jun 2034', status:'valid'},
+];
+
+const AVAILABLE_JOBS = [
+  {id:'TRV-8820',from:'JFK Terminal 4',to:'The Plaza Hotel, NYC',flight:'EK201',flightInfo:'Emirates DXB→JFK · Arr 14:40',status:'On Time',pax:3,vehicle:'Executive MPV',dist:'26 km',payout:163,time:'14:20',expires:175},
+  {id:'TRV-8815',from:'Southampton Cruise Port',to:'Gatwick South Terminal',flight:null,pax:6,vehicle:'Minibus',dist:'88 km',payout:254,time:'07:00 tomorrow',expires:245},
+  {id:'TRV-8823',from:'Heathrow T2',to:'Mayfair, London',flight:'TK1987',flightInfo:'Turkish Airlines IST→LHR · Arr 13:45',status:'On Time',pax:2,vehicle:'Saloon',dist:'26 km',payout:73,time:'13:55',expires:112},
+];
+const TODAY_JOBS = [
+  {id:'TRV-8821',from:'Heathrow T5',to:'The Connaught, Mayfair',flight:'BA0117',pax:2,dist:'28 km',payout:73,status:'active'},
+  {id:'TRV-8818',from:'Gatwick North',to:'Chelsea, London',flight:'—',pax:1,dist:'48 km',payout:97,status:'done'},
+  {id:'TRV-8812',from:'The Ritz Hotel',to:'Heathrow T5',flight:'—',pax:2,dist:'30 km',payout:82,status:'done'},
+  {id:'TRV-8809',from:'Heathrow T3',to:'Canary Wharf',flight:'QF001',pax:3,dist:'36 km',payout:78,status:'done'},
+];
+const PAYOUTS = [
+  {date:'28 Mar 2026',jobs:4,net:'£332.42',status:'pending'},
+  {date:'21 Mar 2026',jobs:6,net:'£485.44',status:'paid'},
+  {date:'14 Mar 2026',jobs:5,net:'£367.36',status:'paid'},
+  {date:'07 Mar 2026',jobs:7,net:'£519.88',status:'paid'},
+  {date:'28 Feb 2026',jobs:4,net:'£294.60',status:'paid'},
+];
+const PERIODS = {
+  today:{amount:'312',sub:'TODAY\'S EARNINGS',jobs:'4',km:'94',hrs:'6.2',avg:'£78',gross:'£381',comm:'−£68.58',tips:'+£20',net:'£332.42',chartTitle:'Hourly Breakdown',labels:['6am','8am','10am','12pm','2pm','4pm','6pm','8pm'],data:[0,65,0,82,0,73,97,0]},
+  week:{amount:'1,847',sub:'THIS WEEK\'S EARNINGS',jobs:'23',km:'612',hrs:'38.4',avg:'£80',gross:'£2,252',comm:'−£405.36',tips:'+£140',net:'£1,987',chartTitle:'Daily Earnings',labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],data:[210,340,190,420,380,180,127]},
+  month:{amount:'6,240',sub:'THIS MONTH\'S EARNINGS',jobs:'78',km:'2,148',hrs:'141',avg:'£80',gross:'£7,609',comm:'−£1,369.62',tips:'+£480',net:'£6,719',chartTitle:'Weekly Earnings',labels:['W1','W2','W3','W4'],data:[1420,1870,1680,1270]},
+};
+const JOURNEY_STEPS = ['En Route','At Pickup','In Journey','Arrived'];
+
+/* ─── CLOCK ─── */
+function updateClock() {
+  const now = new Date();
+  document.getElementById('status-clock').textContent = now.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+updateClock(); setInterval(updateClock,1000);
+
+/* ─── LOGIN ─── */
+function drvLogin() {
+  const splash = document.getElementById('screen-splash');
+  const jobs = document.getElementById('screen-jobs');
+  splash.style.opacity='0';splash.style.transform='scale(.95)';splash.style.transition='all .4s ease';
+  setTimeout(()=>{
+    splash.className='screen hidden-left';
+    jobs.className='screen active';
+    document.getElementById('bottom-nav').style.display='flex';
+    currentScreen='jobs';
+    initJobs();
+  },380);
+}
+
+/* ─── NAV ─── */
+function navTo(id) {
+  const order=['jobs','active','earnings','profile'];
+  const ci=order.indexOf(currentScreen),ni=order.indexOf(id);
+  if(ci===ni)return;
+  document.getElementById('screen-'+currentScreen).className='screen '+(ni>=ci?'hidden-left':'hidden-right');
+  document.getElementById('screen-'+id).className='screen active';
+  currentScreen=id;
+  order.forEach(s=>{const b=document.getElementById('bn-'+s);if(b)b.className='bn'+(s===id?' active':'');});
+  if(id==='active'){initDriverMap();renderJourneySteps();}
+  if(id==='earnings'){renderEarnings('today');}
+  if(id==='profile'){renderDocs();}
+}
+
+/* ─── ONLINE TOGGLE ─── */
+function toggleOnline() {
+  isOnline=!isOnline;
+  const track=document.getElementById('ot-track');
+  const label=document.getElementById('ot-label');
+  const badge=document.getElementById('status-badge');
+  track.className='ot-track'+(isOnline?' on':'');
+  label.textContent=isOnline?'Online':'Offline';
+  badge.className='badge badge-'+(isOnline?'online':'offline');
+  badge.textContent=isOnline?'Online':'Offline';
+}
+
+/* ─── JOBS ─── */
+function jobTabSwitch(el,tab) {
+  document.querySelectorAll('.job-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentJobTab=tab;
+  renderJobList(tab);
+}
+
+function initJobs() { renderJobList('available'); }
+
+function renderJobList(tab) {
+  const scroll=document.getElementById('job-list-scroll');
+  if(!scroll)return;
+  let html='';
+  if(tab==='available') {
+    Object.values(jobTimers).forEach(t=>clearInterval(t));
+    html=AVAILABLE_JOBS.map((j,i)=>`
+      <div class="job-card new-job" id="jcard-${j.id}">
+        <div class="jc-timer-bar" id="jtb-${j.id}" style="width:100%;transition:width ${j.expires}s linear"></div>
+        <div class="jc-body">
+          <div class="jc-head">
+            <div>
+              <div class="jc-id">${j.id}</div>
+              <span class="timer-chip" id="jt-${j.id}">⏱ ${Math.floor(j.expires/60)}:${String(j.expires%60).padStart(2,'0')}</span>
+            </div>
+            <div class="jc-payout">£${j.payout}<small>your cut (82%)</small></div>
+          </div>
+          <div class="jc-route">${j.from}<br>→ ${j.to}</div>
+          <div class="jc-meta">
+            ${j.flight?`<div class="jc-meta-item">✈ <em>${j.flight}</em></div>`:'<div class="jc-meta-item">🚢 <em>Cruise Port</em></div>'}
+            <div class="jc-meta-item">👥 <em>${j.pax} pax</em></div>
+            <div class="jc-meta-item">📍 <em>${j.dist}</em></div>
+            <div class="jc-meta-item">🕐 <em>${j.time}</em></div>
+          </div>
+          ${j.flight&&j.flightInfo?`<div class="jc-flight"><div class="jf-num">${j.flight}</div><div class="jf-info">${j.flightInfo}</div><div class="jf-status" style="color:${j.status==='On Time'?'var(--green)':'var(--amber)'}">● ${j.status}</div></div>`:''}
+          <div class="jc-actions">
+            <button class="btn-green" style="flex:1;padding:13px" onclick="acceptJob('${j.id}')">✓ Accept</button>
+            <button class="btn-ghost" style="flex:1;text-align:center" onclick="declineJob('${j.id}')">✗ Decline</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    // Start timers
+    AVAILABLE_JOBS.forEach(j=>{
+      let s=j.expires;
+      const tb=document.getElementById('jtb-'+j.id);
+      if(tb)setTimeout(()=>tb.style.width='0%',50);
+      jobTimers[j.id]=setInterval(()=>{
+        s--;const m=Math.floor(s/60),sec=s%60;
+        const el=document.getElementById('jt-'+j.id);
+        if(el)el.textContent=`⏱ ${m}:${String(sec).padStart(2,'0')}`;
+        if(s<=0){clearInterval(jobTimers[j.id]);const card=document.getElementById('jcard-'+j.id);if(card){card.style.opacity='0';card.style.transition='opacity .3s';setTimeout(()=>card.remove(),300);}}
+      },1000);
+    });
+  } else if(tab==='today') {
+    html=TODAY_JOBS.map(j=>`
+      <div class="job-card" style="border-left:3px solid ${j.status==='active'?'var(--gold)':'rgba(255,255,255,0.06)'}">
+        <div class="jc-body">
+          <div class="jc-head">
+            <div><div class="jc-id">${j.id}</div><span class="badge badge-${j.status==='active'?'online':'done'}" style="margin-top:6px;display:inline-flex">${j.status==='active'?'Active':'Completed'}</span></div>
+            <div class="jc-payout" style="font-size:24px">£${j.payout}</div>
+          </div>
+          <div class="jc-route" style="font-size:16px">${j.from} → ${j.to}</div>
+          <div class="jc-meta">
+            ${j.flight&&j.flight!=='—'?`<div class="jc-meta-item">✈ <em>${j.flight}</em></div>`:''}
+            <div class="jc-meta-item">👥 <em>${j.pax} pax</em></div>
+            <div class="jc-meta-item">📍 <em>${j.dist}</em></div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    html=`<div style="padding:40px 20px;text-align:center"><div style="font-size:32px;margin-bottom:12px">📋</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">No scheduled jobs yet</div></div>`;
+  }
+  if(html)scroll.innerHTML=`<div style="height:12px"></div>${html}<div style="height:20px"></div>`;
+}
+
+function acceptJob(id) {
+  Object.values(jobTimers).forEach(t=>clearInterval(t));
+  jobStep=0;
+  navTo('active');
+  renderJourneySteps();
+  updateActionButtons();
+}
+function declineJob(id) {
+  const el=document.getElementById('jcard-'+id);
+  if(el){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);}
+}
+
+/* ─── JOURNEY STEPS ─── */
+function renderJourneySteps() {
+  const el=document.getElementById('js-steps');
+  if(!el)return;
+  let html='';
+  JOURNEY_STEPS.forEach((label,i)=>{
+    const isDone=i<jobStep;
+    const isNow=i===jobStep;
+    html+=`
+      <div class="js-step">
+        <div class="js-step-circle ${isDone?'done':isNow?'now':''}">${isDone?'✓':i+1}</div>
+        <div class="js-step-label ${isDone?'done':isNow?'now':''}" style="font-size:9px">${label}</div>
+      </div>
+    `;
+    if(i<JOURNEY_STEPS.length-1) html+=`<div class="js-connector ${i<jobStep?'done':''}"></div>`;
+  });
+  el.innerHTML=html;
+}
+
+function updateActionButtons() {
+  const el=document.getElementById('job-action-buttons');
+  if(!el)return;
+  const labels=[
+    {label:'✓ Arrived at Pickup', cls:'btn-green'},
+    {label:'✓ Client On Board — Start Journey', cls:'btn-gold'},
+    {label:'✓ Mark Journey Complete', cls:'btn-green'},
+  ];
+  if(jobStep<3) {
+    const btn=labels[jobStep];
+    el.innerHTML=`<button class="${btn.cls}" style="margin-bottom:0" onclick="advanceStep()">${btn.label}</button>`;
+  } else {
+    el.innerHTML='';
+  }
+}
+
+function advanceStep() {
+  jobStep=Math.min(jobStep+1,3);
+  renderJourneySteps();
+  updateActionButtons();
+  if(jobStep===3) {
+    setTimeout(()=>{document.getElementById('complete-sheet').classList.add('open');},400);
+  }
+  // Update nav instruction
+  const instrs=[
+    {text:'Proceed to Heathrow T5 Arrivals',sub:'Level 0 · Meeting point B'},
+    {text:'Confirm client ID · Board Mr Whitmore',sub:'2 pax · 2 bags · MR J WHITMORE'},
+    {text:'Head to The Connaught, Mayfair',sub:'Carlos Place, Mayfair W1K 2AL'},
+  ];
+  if(jobStep-1<instrs.length) {
+    const inst=instrs[jobStep-1];
+    document.getElementById('nav-instr').textContent=inst.text;
+    document.getElementById('nav-sub').textContent=inst.sub;
+  }
+}
+
+function goBack() {
+  document.getElementById('complete-sheet').classList.remove('open');
+  // Update today's stats
+  const jobsEl=document.getElementById('ts-jobs');
+  if(jobsEl)jobsEl.textContent=parseInt(jobsEl.textContent)+1;
+  const earnEl=document.getElementById('ts-earn');
+  if(earnEl)earnEl.textContent='£'+(parseInt(earnEl.textContent.replace('£',''))+73);
+  jobStep=0;
+  navTo('jobs');
+  renderJobList('today');
+  document.querySelectorAll('.job-tab').forEach((t,i)=>{t.classList[i===1?'add':'remove']('active');});
+  currentJobTab='today';
+}
+
+/* ─── DRIVER MAP ─── */
+function initDriverMap() {
+  if(driverMapAnim)cancelAnimationFrame(driverMapAnim);
+  const canvas=document.getElementById('driver-map');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  let t=0;
+  const routeX=[W*.08,W*.22,W*.36,W*.5,W*.62,W*.74,W*.85];
+  const routeY=[H*.72,H*.58,H*.48,H*.4,H*.48,H*.42,H*.36];
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0c0c22';ctx.fillRect(0,0,W,H);
+    // Grid
+    ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+    for(let x=0;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    // Roads
+    ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=5;
+    [[0,H*.45,W,H*.45],[W*.38,0,W*.38,H],[W*.72,0,W*.72,H]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
+    // Route
+    ctx.strokeStyle='rgba(74,222,128,0.6)';ctx.lineWidth=3;ctx.setLineDash([8,5]);
+    ctx.beginPath();ctx.moveTo(routeX[0],routeY[0]);
+    routeX.forEach((x,i)=>ctx.lineTo(x,routeY[i]));
+    ctx.stroke();ctx.setLineDash([]);
+    // Destination (client)
+    const dx=routeX[routeX.length-1],dy=routeY[routeY.length-1];
+    ctx.beginPath();ctx.arc(dx,dy,14,0,Math.PI*2);ctx.fillStyle='rgba(96,165,250,0.15)';ctx.fill();
+    ctx.beginPath();ctx.arc(dx,dy,8,0,Math.PI*2);ctx.fillStyle='#60a5fa';ctx.fill();
+    ctx.fillStyle='#0c0c22';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('C',dx,dy);
+    // Driver moving
+    const prog=Math.min(1,t*0.0007);
+    const seg=Math.min(Math.floor(prog*(routeX.length-1)),routeX.length-2);
+    const frac=prog*(routeX.length-1)-seg;
+    const px=routeX[seg]+(routeX[seg+1]-routeX[seg])*frac;
+    const py=routeY[seg]+(routeY[seg+1]-routeY[seg])*frac;
+    ctx.beginPath();ctx.arc(px,py,20,0,Math.PI*2);ctx.fillStyle='rgba(74,222,128,0.12)';ctx.fill();
+    ctx.beginPath();ctx.arc(px,py,11,0,Math.PI*2);ctx.fillStyle='#4ade80';ctx.fill();
+    ctx.fillStyle='#0c0c22';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🚗',px,py);
+    // ETA
+    const eta=Math.max(1,Math.round((1-prog)*22));
+    const etaEl=document.getElementById('active-eta');if(etaEl)etaEl.textContent=eta+' min';
+    const distEl=document.getElementById('active-dist');if(distEl)distEl.textContent=(eta*.42).toFixed(1)+' km';
+    t++;
+    driverMapAnim=requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+/* ─── MESSAGE SHEET ─── */
+function openMsgSheet(){document.getElementById('msg-sheet').classList.add('open');}
+function closeMsgSheet(){document.getElementById('msg-sheet').classList.remove('open');}
+function sendDrvMsg(){
+  const inp=document.getElementById('drv-msg-input');
+  if(!inp||!inp.value.trim())return;
+  const thread=document.getElementById('drv-msg-thread');
+  const bubble=document.createElement('div');
+  bubble.style.cssText='background:var(--green);color:#0a0a14;border-radius:12px 12px 2px 12px;padding:10px 14px;font-size:13px;align-self:flex-end;max-width:80%;animation:fadeUp .25s ease;font-family:\'Instrument Sans\',sans-serif';
+  bubble.textContent=inp.value;thread.appendChild(bubble);inp.value='';
+  setTimeout(()=>{
+    const r=document.createElement('div');
+    r.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:12px 12px 12px 2px;padding:10px 14px;font-size:13px;color:var(--muted);align-self:flex-start;max-width:80%;animation:fadeUp .25s ease;margin-top:6px;font-family:\'Instrument Sans\',sans-serif';
+    r.innerHTML='<strong style="color:var(--white);font-weight:400">James W.</strong> — Thanks, on our way to arrivals now ✓';
+    thread.appendChild(r);thread.scrollTop=thread.scrollHeight;
+  },1400);
+  thread.scrollTop=thread.scrollHeight;
+}
+function drvQuickMsg(msg){document.getElementById('drv-msg-input').value=msg;sendDrvMsg();}
+
+function closeCompleteSheet(){document.getElementById('complete-sheet').classList.remove('open');}
+function showDelay(){alert('Delay reported to Traversa operations and client notified automatically.');}
+
+/* ─── EARNINGS ─── */
+function switchPeriod(el,period) {
+  document.querySelectorAll('.period-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderEarnings(period);
+}
+function renderEarnings(period) {
+  currentPeriod=period;
+  const p=PERIODS[period];
+  document.getElementById('earn-amount').textContent=p.amount;
+  document.getElementById('earn-sub').textContent=p.sub;
+  document.getElementById('earn-jobs').textContent=p.jobs;
+  document.getElementById('earn-km').textContent=p.km;
+  document.getElementById('earn-hrs').textContent=p.hrs;
+  document.getElementById('earn-avg').textContent=p.avg;
+  document.getElementById('bd-gross').textContent=p.gross;
+  document.getElementById('bd-comm').textContent=p.comm;
+  document.getElementById('bd-tips').textContent=p.tips;
+  document.getElementById('bd-net').textContent=p.net;
+  document.getElementById('chart-title').textContent=p.chartTitle;
+  drawEarnChart(p.data,p.labels);
+  renderPayouts();
+}
+function drawEarnChart(data,labels) {
+  const canvas=document.getElementById('earn-chart');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  const max=Math.max(...data)*1.2||100;
+  ctx.clearRect(0,0,W,H);
+  const bw=W/data.length*0.55,gap=W/data.length;
+  data.forEach((v,i)=>{
+    const bh=(v/max)*(H-16),x=gap*i+(gap-bw)/2,y=H-bh-8;
+    if(v===0){return;}
+    const grad=ctx.createLinearGradient(0,y,0,H);
+    grad.addColorStop(0,'rgba(201,169,110,0.85)');
+    grad.addColorStop(1,'rgba(201,169,110,0.1)');
+    ctx.fillStyle=grad;
+    ctx.beginPath();ctx.roundRect(x,y,bw,bh,3);ctx.fill();
+    if(v>0){ctx.fillStyle='rgba(244,242,237,0.45)';ctx.font='9px DM Mono, monospace';ctx.textAlign='center';ctx.fillText('£'+v,x+bw/2,y-3);}
+  });
+  document.getElementById('chart-labels').innerHTML=labels.map(l=>`<span class="chart-label">${l}</span>`).join('');
+}
+function renderPayouts() {
+  const el=document.getElementById('payout-list');
+  if(!el)return;
+  el.innerHTML=PAYOUTS.map(p=>`
+    <div class="ph-item">
+      <div><div class="ph-date">${p.date}</div><div class="ph-jobs">${p.jobs} jobs</div></div>
+      <div class="ph-amount">£${p.net.replace('£','')}</div>
+      <div class="ph-status ${p.status}">${p.status}</div>
+    </div>
+  `).join('');
+}
+
+/* ─── PROFILE / DOCS ─── */
+function renderDocs() {
+  const el=document.getElementById('docs-list');
+  if(!el)return;
+  el.innerHTML=DOCS.map(d=>`
+    <div class="doc-item">
+      <div class="doc-icon">${d.icon}</div>
+      <div class="doc-info"><div class="doc-name">${d.name}</div><div class="doc-exp">${d.exp}</div></div>
+      <div class="doc-badge ${d.status}">${d.status==='valid'?'Valid':'Expiring'}</div>
+    </div>
+  `).join('');
+}
+
+/* ─── INIT ─── */
+window.addEventListener('load',()=>{renderPayouts();});
+</script>
+</body>
+</html>

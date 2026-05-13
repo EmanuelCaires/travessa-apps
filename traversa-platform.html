@@ -1,0 +1,2425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traversa — Operations Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Mono:wght@300;400&family=Instrument+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#08080e;--deep:#0c0c18;--surface:#111120;--card:#161628;--card2:#1b1b2e;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --gold:#c9a96e;--gold2:#e2c48d;--gold-dim:rgba(201,169,110,0.12);--gold-glow:rgba(201,169,110,0.05);
+  --white:#f4f2ed;--muted:rgba(244,242,237,0.44);--dim:rgba(244,242,237,0.2);
+  --green:#4ade80;--green-d:rgba(74,222,128,0.1);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,0.1);
+  --red:#ef4444;--red-d:rgba(239,68,68,0.1);
+  --blue:#60a5fa;--blue-d:rgba(96,165,250,0.1);
+  --teal:#2dd4bf;--teal-d:rgba(45,212,191,0.1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--ink);color:var(--white);font-family:'Instrument Sans',sans-serif;font-weight:300;font-size:14px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(201,169,110,0.2);border-radius:2px}
+
+/* ── WELCOME ── */
+#welcome{position:fixed;inset:0;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;transition:opacity .5s,transform .5s}
+#welcome.out{opacity:0;pointer-events:none;transform:scale(.97)}
+.w-logo{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;letter-spacing:.14em;margin-bottom:6px}
+.w-logo span{color:var(--gold)}
+.w-sub{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);margin-bottom:60px}
+.w-roles{display:flex;gap:1px;background:var(--border)}
+.role-card{background:var(--surface);padding:48px 52px;cursor:pointer;transition:background .25s,transform .2s;position:relative;overflow:hidden;min-width:260px}
+.role-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at top left,var(--gold-dim),transparent 65%);opacity:0;transition:opacity .35s}
+.role-card:hover{background:var(--card);transform:translateY(-3px)}
+.role-card:hover::before{opacity:1}
+.role-card:hover .role-icon{transform:scale(1.1)}
+.role-icon{font-size:32px;margin-bottom:20px;display:block;transition:transform .25s}
+.role-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;margin-bottom:8px}
+.role-desc{font-size:12.5px;color:var(--muted);line-height:1.7}
+.role-action{margin-top:24px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px}
+.role-action::after{content:'→'}
+.w-stats{display:flex;gap:48px;margin-top:56px;padding-top:40px;border-top:1px solid var(--border)}
+.w-stat{text-align:center}
+.w-stat-n{font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--gold);display:block;line-height:1}
+.w-stat-l{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+
+/* ── APP SHELL ── */
+#app{position:fixed;inset:0;display:none;flex-direction:column}
+#app.active{display:flex}
+#topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;background:rgba(8,8,14,0.96);backdrop-filter:blur(20px);z-index:100;position:relative}
+.tb-logo{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;letter-spacing:.14em}
+.tb-logo span{color:var(--gold)}
+.tb-sep{width:1px;height:22px;background:var(--border);margin:0 4px}
+.tb-role-badge{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.15em;text-transform:uppercase;padding:4px 10px;border:1px solid var(--border);color:var(--muted)}
+.tb-spacer{flex:1}
+.tb-live{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--muted)}
+.tb-live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(74,222,128,.4)}50%{opacity:.8;box-shadow:0 0 0 4px rgba(74,222,128,0)}}
+.tb-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:7px 16px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all .2s}
+.tb-btn:hover{border-color:var(--gold);color:var(--gold)}
+.tb-home{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:7px 16px;border:1px solid var(--border2);background:none;color:var(--white);cursor:pointer;transition:all .2s}
+.tb-home:hover{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.notif-btn{position:relative;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);cursor:pointer;transition:border-color .2s;background:none;color:var(--muted)}
+.notif-btn:hover{border-color:var(--gold);color:var(--gold)}
+.notif-badge{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--red);border:1px solid var(--ink)}
+
+/* ── CONTENT AREA ── */
+#app-body{flex:1;display:flex;overflow:hidden}
+#sidebar{width:200px;border-right:1px solid var(--border);background:var(--deep);display:none;flex-direction:column;flex-shrink:0;overflow-y:auto}
+#sidebar.active{display:flex}
+.sb-section{padding:16px 0}
+.sb-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.25em;text-transform:uppercase;color:var(--dim);padding:0 20px 10px}
+.sb-item{padding:10px 20px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:background .2s;font-size:13px;color:var(--muted);border-left:2px solid transparent}
+.sb-item:hover{background:rgba(201,169,110,0.04);color:var(--white)}
+.sb-item.active{color:var(--gold);border-left-color:var(--gold);background:var(--gold-dim)}
+.sb-icon{font-size:14px;width:18px;text-align:center}
+.sb-divider{height:1px;background:var(--border);margin:8px 20px}
+
+/* BOTTOM NAV (client/driver) */
+#bottom-nav{height:54px;border-top:1px solid var(--border);background:var(--deep);display:none;align-items:stretch;flex-shrink:0}
+#bottom-nav.active{display:flex}
+.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:background .2s;border-right:1px solid var(--border);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.bn-item:last-child{border-right:none}
+.bn-item:hover{background:var(--gold-glow);color:var(--white)}
+.bn-item.active{color:var(--gold)}
+.bn-icon{font-size:16px}
+
+/* ── MAIN CONTENT ── */
+#main{flex:1;overflow-y:auto;overflow-x:hidden}
+.view{display:none;min-height:100%}
+.view.active{display:block}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+
+/* ── SHARED COMPONENTS ── */
+.page-header{padding:28px 28px 0;border-bottom:1px solid var(--border);padding-bottom:28px;margin-bottom:0}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;line-height:1.1}
+.page-title em{font-style:italic;color:var(--gold)}
+.page-sub{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.content-grid{padding:24px 28px;display:flex;flex-direction:column;gap:20px}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);padding:24px}
+.card-sm{background:var(--card);border:1px solid var(--border);padding:16px}
+.card-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.card-title span{color:var(--muted);font-size:10px;letter-spacing:.1em}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)}
+.kpi{background:var(--card);padding:24px;transition:background .25s}
+.kpi:hover{background:var(--card2)}
+.kpi-label{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.kpi-value{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:300;color:var(--gold);line-height:1;display:block}
+.kpi-delta{font-family:'DM Mono',monospace;font-size:10px;color:var(--green);margin-top:6px}
+.kpi-delta.down{color:var(--red)}
+
+/* TABLES */
+.t-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;vertical-align:middle}
+tr:hover td{background:rgba(201,169,110,0.03)}
+tr.selected td{background:var(--gold-dim)}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.1em;padding:3px 9px;text-transform:uppercase}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.badge-active{background:var(--green-d);color:var(--green)}.badge-active::before{background:var(--green)}
+.badge-pending{background:var(--amber-d);color:var(--amber)}.badge-pending::before{background:var(--amber)}
+.badge-completed{background:rgba(255,255,255,0.05);color:var(--muted)}.badge-completed::before{background:var(--muted)}
+.badge-assigned{background:var(--blue-d);color:var(--blue)}.badge-assigned::before{background:var(--blue)}
+.badge-issue{background:var(--red-d);color:var(--red)}.badge-issue::before{background:var(--red)}
+.badge-online{background:var(--green-d);color:var(--green)}.badge-online::before{background:var(--green)}
+.badge-offline{background:rgba(255,255,255,0.04);color:var(--dim)}.badge-offline::before{background:var(--dim)}
+
+/* BUTTONS */
+.btn{font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;padding:10px 20px;border:none;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-gold{background:var(--gold);color:var(--ink)}.btn-gold:hover{background:var(--gold2)}
+.btn-outline{background:none;border:1px solid var(--border2);color:var(--white)}.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--muted)}.btn-ghost:hover{color:var(--white);border-color:var(--border2)}
+.btn-green{background:var(--green-d);border:1px solid var(--green);color:var(--green)}.btn-green:hover{background:rgba(74,222,128,.2)}
+.btn-red{background:var(--red-d);border:1px solid var(--red);color:var(--red)}.btn-red:hover{background:rgba(239,68,68,.2)}
+.btn-sm{padding:6px 14px;font-size:9.5px}
+
+/* FORM ELEMENTS */
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-label{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+.form-input{background:var(--surface);border:1px solid var(--border);color:var(--white);font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;padding:10px 14px;outline:none;transition:border-color .2s;width:100%}
+.form-input:focus{border-color:var(--gold)}
+.form-input::placeholder{color:var(--muted)}
+.form-input-mono{font-family:'DM Mono',monospace;font-size:13px}
+.form-select{background:var(--surface);border:1px solid var(--border);color:var(--white);font-family:'DM Mono',monospace;font-size:12px;padding:10px 14px;outline:none;transition:border-color .2s;width:100%;cursor:pointer;appearance:none}
+.form-select:focus{border-color:var(--gold)}
+.form-select option{background:var(--surface)}
+.form-grid{display:grid;gap:14px}
+.form-grid-2{grid-template-columns:1fr 1fr}
+
+/* SCROLLABLE LISTS */
+.scroll-list{display:flex;flex-direction:column;gap:1px;max-height:420px;overflow-y:auto}
+.list-item{background:var(--card);padding:16px 20px;border-left:2px solid transparent;transition:all .2s;cursor:pointer}
+.list-item:hover{background:var(--card2);border-left-color:var(--gold)}
+.list-item.selected{border-left-color:var(--gold);background:var(--card2)}
+
+/* ACTIVITY FEED */
+.feed{display:flex;flex-direction:column;gap:0;max-height:320px;overflow-y:auto}
+.feed-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.feed-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.feed-text{font-size:13px;line-height:1.5;color:var(--muted)}
+.feed-text strong{color:var(--white);font-weight:400}
+.feed-time{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:2px}
+
+/* PROGRESS STEPS */
+.steps-row{display:flex;align-items:center;gap:0;margin-bottom:28px}
+.step-item{display:flex;align-items:center;gap:0;flex:1}
+.step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;border:1px solid var(--border);color:var(--muted);flex-shrink:0;transition:all .3s}
+.step-circle.done{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.step-circle.active{border-color:var(--gold);color:var(--gold)}
+.step-line{flex:1;height:1px;background:var(--border)}
+.step-line.done{background:var(--gold)}
+
+/* MAP CANVAS */
+.map-wrap{position:relative;border:1px solid var(--border);overflow:hidden}
+.map-overlay{position:absolute;top:12px;left:12px;right:12px;pointer-events:none;display:flex;justify-content:space-between;align-items:flex-start}
+.map-pill{background:rgba(8,8,14,0.88);backdrop-filter:blur(10px);border:1px solid var(--border);padding:8px 14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--white)}
+.map-pill em{color:var(--gold);font-style:normal}
+
+/* RATINGS */
+.stars-row{display:flex;gap:2px;color:var(--gold);font-size:13px}
+.star-empty{color:var(--dim)}
+
+/* CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:360px;border:1px solid var(--border)}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.chat-msg{max-width:80%;padding:10px 14px;font-size:13px;line-height:1.6}
+.chat-msg.user{background:var(--gold-dim);border:1px solid rgba(201,169,110,0.2);align-self:flex-end;color:var(--white)}
+.chat-msg.ai{background:var(--card);border:1px solid var(--border);align-self:flex-start;color:var(--muted)}
+.chat-msg.ai strong{color:var(--white);font-weight:400}
+.chat-input-row{border-top:1px solid var(--border);display:flex;gap:0}
+.chat-input{flex:1;background:none;border:none;color:var(--white);font-family:'Instrument Sans',sans-serif;font-size:13px;padding:14px 16px;outline:none}
+.chat-input::placeholder{color:var(--dim)}
+.chat-send{background:var(--gold);border:none;color:var(--ink);padding:0 20px;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;transition:background .2s}
+.chat-send:hover{background:var(--gold2)}
+
+/* VEHICLE CARDS */
+.vehicle-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
+.vehicle-card{background:var(--card);padding:20px;cursor:pointer;border:2px solid transparent;transition:all .2s}
+.vehicle-card:hover{background:var(--card2)}
+.vehicle-card.selected{border-color:var(--gold);background:var(--gold-dim)}
+.vehicle-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;margin-bottom:4px}
+.vehicle-pax{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+.vehicle-price{font-family:'DM Mono',monospace;font-size:13px;color:var(--gold);margin-top:12px}
+.vehicle-example{font-size:11px;color:var(--dim);margin-top:2px}
+.vehicle-icon{font-size:28px;margin-bottom:12px}
+
+/* JOB CARD (driver) */
+.job-card{background:var(--card);border:1px solid var(--border);padding:20px;border-left:3px solid var(--amber)}
+.job-card.urgent{border-left-color:var(--red)}
+.job-card.mine{border-left-color:var(--gold)}
+.job-meta{display:flex;gap:16px;margin:12px 0;flex-wrap:wrap}
+.job-meta-item{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--muted)}
+.job-meta-item em{color:var(--white);font-style:normal}
+.job-payout{font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--gold);font-weight:300}
+.job-actions{display:flex;gap:10px;margin-top:16px}
+.timer-pill{font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);background:var(--amber-d);border:1px solid var(--amber);padding:3px 10px;display:inline-block}
+
+/* FLIGHT STATUS */
+.flight-panel{background:var(--surface);border:1px solid var(--border);padding:16px}
+.flight-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.flight-number{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300}
+.flight-route{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted)}
+.flight-status-row{display:flex;gap:20px}
+.flight-col{display:flex;flex-direction:column;gap:2px}
+.flight-col-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim)}
+.flight-col-value{font-family:'DM Mono',monospace;font-size:13px;color:var(--white)}
+
+/* EARNINGS */
+.earnings-big{font-family:'Cormorant Garamond',serif;font-size:56px;font-weight:300;color:var(--gold);line-height:1}
+.earnings-breakdown{display:flex;flex-direction:column;gap:0;border:1px solid var(--border)}
+.earn-row{display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-family:'DM Mono',monospace;font-size:12px}
+.earn-row:last-child{border-bottom:none}
+.earn-row .label{color:var(--muted)}
+.earn-row .val{color:var(--white)}
+.earn-row.total .val{color:var(--gold)}
+.earn-row.deduct .val{color:var(--red)}
+
+/* ANALYTICS */
+.chart-wrap{position:relative}
+.chart-label-row{display:flex;justify-content:space-between;margin-top:8px}
+.chart-label{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--muted)}
+
+/* PRICING TABLE */
+.price-table{border:1px solid var(--border);overflow:hidden}
+.price-row{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);gap:12px}
+.price-row:last-child{border-bottom:none}
+.price-row:hover{background:var(--gold-glow)}
+.price-zone{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);flex:1}
+.price-value{font-family:'DM Mono',monospace;font-size:12px;color:var(--white);width:80px;text-align:right}
+.price-edit{opacity:0;transition:opacity .2s}
+.price-row:hover .price-edit{opacity:1}
+
+/* DRIVER PROFILE */
+.doc-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.doc-name{font-size:13px}
+.doc-expiry{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)}
+
+/* ALERT */
+.alert{padding:12px 16px;border-left:3px solid;font-size:13px;line-height:1.5;margin-bottom:0}
+.alert-amber{border-color:var(--amber);background:var(--amber-d);color:var(--amber)}
+.alert-red{border-color:var(--red);background:var(--red-d);color:var(--red)}
+.alert-green{border-color:var(--green);background:var(--green-d);color:var(--green)}
+
+/* 2-COL LAYOUT */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.sidebar-main{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+.main-sidebar{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.fade-in{animation:fadeIn .35s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.slide-up{animation:slideUp .4s ease}
+
+/* SCROLLING NUMBER */
+@keyframes countUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.count-up{animation:countUp .6s ease}
+
+/* RESPONSIVE TWEAKS */
+@media(max-width:1100px){
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .vehicle-grid{grid-template-columns:1fr 1fr}
+  .two-col,.main-sidebar,.sidebar-main{grid-template-columns:1fr}
+  .three-col{grid-template-columns:1fr 1fr}
+}
+@media(max-width:700px){
+  #sidebar{display:none!important}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .three-col{grid-template-columns:1fr}
+  .form-grid-2{grid-template-columns:1fr}
+  .vehicle-grid{grid-template-columns:1fr}
+}
+
+/* NOTIFICATION PANEL */
+#notif-panel{position:fixed;top:52px;right:0;width:320px;background:var(--deep);border-left:1px solid var(--border);border-bottom:1px solid var(--border);z-index:200;display:none;max-height:calc(100vh - 52px);overflow-y:auto}
+#notif-panel.active{display:block}
+.notif-header{padding:16px 20px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+.notif-item{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;gap:12px}
+.notif-icon{font-size:16px;flex-shrink:0}
+.notif-text{font-size:12.5px;color:var(--muted);line-height:1.5}
+.notif-text strong{color:var(--white);font-weight:400;display:block}
+.notif-time{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:2px}
+
+/* BOOKING CONFIRMATION */
+.confirm-box{background:var(--card);border:1px solid var(--border);padding:28px;text-align:center}
+.confirm-id{font-family:'DM Mono',monospace;font-size:24px;letter-spacing:.2em;color:var(--gold);margin-bottom:8px}
+.confirm-check{font-size:48px;margin-bottom:16px;display:block}
+
+/* VETTING PIPELINE */
+.pipeline{display:flex;gap:1px;background:var(--border);overflow-x:auto}
+.pipeline-stage{background:var(--card);padding:16px 20px;min-width:180px;flex:1}
+.stage-title{font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.stage-count{font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--white);font-weight:300;margin-bottom:12px;line-height:1}
+.stage-items{display:flex;flex-direction:column;gap:6px}
+.stage-item{background:var(--surface);padding:8px 12px;font-size:12px}
+
+/* TAG */
+.tag{display:inline-block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;padding:2px 8px;background:var(--gold-dim);color:var(--gold);text-transform:uppercase}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ WELCOME ══════════════ -->
+<div id="welcome">
+  <div class="w-logo">tra<span>·</span>versa</div>
+  <div class="w-sub">Operations Platform &nbsp;·&nbsp; Select your role</div>
+  <div class="w-roles">
+    <div class="role-card" onclick="enterApp('client')">
+      <span class="role-icon">🧳</span>
+      <div class="role-title">Client Portal</div>
+      <div class="role-desc">Book transfers, track live rides,<br>manage journeys worldwide.</div>
+      <div class="role-action">Enter portal</div>
+    </div>
+    <div class="role-card" onclick="enterApp('driver')">
+      <span class="role-icon">🚗</span>
+      <div class="role-title">Driver App</div>
+      <div class="role-desc">Accept jobs, navigate routes,<br>track earnings & payouts.</div>
+      <div class="role-action">Open app</div>
+    </div>
+    <div class="role-card" onclick="enterApp('admin')">
+      <span class="role-icon">⚙️</span>
+      <div class="role-title">Admin Dashboard</div>
+      <div class="role-desc">Manage bookings, drivers, analytics<br>and all business operations.</div>
+      <div class="role-action">Open dashboard</div>
+    </div>
+  </div>
+  <div class="w-stats">
+    <div class="w-stat"><span class="w-stat-n" id="ws1">847</span><span class="w-stat-l">Drivers Online</span></div>
+    <div class="w-stat"><span class="w-stat-n" id="ws2">234</span><span class="w-stat-l">Active Rides</span></div>
+    <div class="w-stat"><span class="w-stat-n" id="ws3">£48,920</span><span class="w-stat-l">Revenue Today</span></div>
+    <div class="w-stat"><span class="w-stat-n" id="ws4">4.97</span><span class="w-stat-l">Avg Rating</span></div>
+  </div>
+</div>
+
+<!-- ══════════════ APP SHELL ══════════════ -->
+<div id="app">
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div class="tb-logo">tra<span>·</span>versa</div>
+    <div class="tb-sep"></div>
+    <div class="tb-role-badge" id="tb-role">—</div>
+    <div class="tb-spacer"></div>
+    <div class="tb-live"><div class="tb-live-dot"></div><span id="live-count">234 active rides</span></div>
+    <div class="tb-sep"></div>
+    <button class="notif-btn" onclick="toggleNotif()" title="Notifications">🔔<div class="notif-badge"></div></button>
+    <button class="tb-home" onclick="goHome()">← Switch Role</button>
+  </div>
+
+  <!-- NOTIFICATION PANEL -->
+  <div id="notif-panel">
+    <div class="notif-header">Notifications</div>
+    <div id="notif-list"></div>
+  </div>
+
+  <div id="app-body">
+    <!-- SIDEBAR (admin only) -->
+    <div id="sidebar">
+      <div class="sb-section">
+        <div class="sb-label">Operations</div>
+        <div class="sb-item active" onclick="adminTab('overview')"><span class="sb-icon">📊</span>Overview</div>
+        <div class="sb-item" onclick="adminTab('bookings')"><span class="sb-icon">📋</span>Bookings</div>
+        <div class="sb-item" onclick="adminTab('live')"><span class="sb-icon">🗺</span>Live Map</div>
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-section">
+        <div class="sb-label">People</div>
+        <div class="sb-item" onclick="adminTab('drivers')"><span class="sb-icon">🚗</span>Drivers</div>
+        <div class="sb-item" onclick="adminTab('vetting')"><span class="sb-icon">✅</span>Vetting</div>
+        <div class="sb-item" onclick="adminTab('clients')"><span class="sb-icon">👤</span>Clients</div>
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-section">
+        <div class="sb-label">Finance</div>
+        <div class="sb-item" onclick="adminTab('analytics')"><span class="sb-icon">📈</span>Analytics</div>
+        <div class="sb-item" onclick="adminTab('payouts')"><span class="sb-icon">💷</span>Payouts</div>
+        <div class="sb-item" onclick="adminTab('pricing')"><span class="sb-icon">🏷</span>Pricing</div>
+      </div>
+      <div class="sb-divider"></div>
+      <div class="sb-section">
+        <div class="sb-label">System</div>
+        <div class="sb-item" onclick="adminTab('support')"><span class="sb-icon">💬</span>Support</div>
+        <div class="sb-item" onclick="adminTab('settings')"><span class="sb-icon">⚙️</span>Settings</div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main">
+
+      <!-- ══ CLIENT VIEW ══ -->
+      <div class="view" id="view-client">
+        <!-- BOOK TAB -->
+        <div class="tab-pane active" id="client-book">
+          <div class="page-header">
+            <div class="page-title">Book a <em>Transfer</em></div>
+            <div class="page-sub">AI-powered matching · Instant quotes · Live tracking</div>
+          </div>
+          <div class="content-grid">
+            <div class="steps-row" id="booking-steps">
+              <div class="step-item"><div class="step-circle active" id="sc1">1</div><div class="step-line" id="sl1"></div></div>
+              <div class="step-item"><div class="step-circle" id="sc2">2</div><div class="step-line" id="sl2"></div></div>
+              <div class="step-item"><div class="step-circle" id="sc3">3</div><div class="step-line" id="sl3"></div></div>
+              <div class="step-item" style="flex:0"><div class="step-circle" id="sc4">4</div></div>
+            </div>
+
+            <div class="main-sidebar">
+              <div>
+                <!-- Step 1 -->
+                <div id="step1" class="fade-in">
+                  <div class="card">
+                    <div class="card-title">Transfer Type</div>
+                    <div class="vehicle-grid" style="grid-template-columns:1fr 1fr" id="type-grid">
+                      <div class="vehicle-card selected" onclick="selectType(this,'arrival')"><div class="vehicle-icon">✈️→🏨</div><div class="vehicle-name">Airport Arrival</div><div class="vehicle-pax">Flight lands · Transfer to destination</div></div>
+                      <div class="vehicle-card" onclick="selectType(this,'departure')"><div class="vehicle-icon">🏨→✈️</div><div class="vehicle-name">Airport Departure</div><div class="vehicle-pax">From your location to the airport</div></div>
+                      <div class="vehicle-card" onclick="selectType(this,'cruise')"><div class="vehicle-icon">🚢</div><div class="vehicle-name">Cruise Port</div><div class="vehicle-pax">Embark / disembark transfers</div></div>
+                      <div class="vehicle-card" onclick="selectType(this,'p2p')"><div class="vehicle-icon">📍→📍</div><div class="vehicle-name">Point to Point</div><div class="vehicle-pax">Direct transfer between any two locations</div></div>
+                    </div>
+                    <div style="margin-top:20px;text-align:right"><button class="btn btn-gold" onclick="goStep(2)">Continue →</button></div>
+                  </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div id="step2" style="display:none" class="fade-in">
+                  <div class="card">
+                    <div class="card-title">Journey Details</div>
+                    <div class="form-grid form-grid-2">
+                      <div class="form-group"><div class="form-label">Flight Number</div><input class="form-input form-input-mono" placeholder="BA0117" id="inp-flight" oninput="lookupFlight(this.value)"></div>
+                      <div class="form-group"><div class="form-label">Date</div><input class="form-input form-input-mono" type="date" id="inp-date"></div>
+                      <div class="form-group"><div class="form-label">Pickup Location</div><input class="form-input" placeholder="Terminal, Port, or Address" id="inp-pickup"></div>
+                      <div class="form-group"><div class="form-label">Drop-off Location</div><input class="form-input" placeholder="Hotel, Address, or Venue" id="inp-dropoff"></div>
+                      <div class="form-group"><div class="form-label">Passengers</div><select class="form-select" id="inp-pax"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8+</option></select></div>
+                      <div class="form-group"><div class="form-label">Luggage Pieces</div><select class="form-select"><option>1-2</option><option>3-4</option><option>5-6</option><option>7+</option></select></div>
+                    </div>
+                    <div id="flight-lookup-result" style="margin-top:14px;display:none">
+                      <div class="alert alert-green" id="flight-info-box"></div>
+                    </div>
+                    <div style="margin-top:20px;display:flex;gap:10px;justify-content:space-between">
+                      <button class="btn btn-ghost" onclick="goStep(1)">← Back</button>
+                      <button class="btn btn-gold" onclick="goStep(3)">Continue →</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div id="step3" style="display:none" class="fade-in">
+                  <div class="card">
+                    <div class="card-title">Select Vehicle Class</div>
+                    <div class="vehicle-grid" id="vehicle-select">
+                      <div class="vehicle-card" onclick="selectVehicle(this,'saloon',65)"><div class="vehicle-icon">🚗</div><div class="vehicle-name">Saloon</div><div class="vehicle-pax">1–3 passengers</div><div class="vehicle-example">Mercedes E-Class, BMW 5 Series</div><div class="vehicle-price" id="vp-saloon">from £65</div></div>
+                      <div class="vehicle-card" onclick="selectVehicle(this,'executive',95)"><div class="vehicle-icon">🚙</div><div class="vehicle-name">Executive MPV</div><div class="vehicle-pax">1–5 passengers</div><div class="vehicle-example">Mercedes V-Class, Viano</div><div class="vehicle-price" id="vp-exec">from £95</div></div>
+                      <div class="vehicle-card" onclick="selectVehicle(this,'suv',110)"><div class="vehicle-icon">🛻</div><div class="vehicle-name">Business SUV</div><div class="vehicle-pax">1–4 passengers</div><div class="vehicle-example">Range Rover, Audi Q7</div><div class="vehicle-price" id="vp-suv">from £110</div></div>
+                      <div class="vehicle-card" onclick="selectVehicle(this,'minibus',140)"><div class="vehicle-icon">🚐</div><div class="vehicle-name">Minibus</div><div class="vehicle-pax">6–8 passengers</div><div class="vehicle-example">Mercedes Sprinter</div><div class="vehicle-price" id="vp-mini">from £140</div></div>
+                      <div class="vehicle-card" onclick="selectVehicle(this,'first',220)"><div class="vehicle-icon">💎</div><div class="vehicle-name">First Class</div><div class="vehicle-pax">1–3 passengers</div><div class="vehicle-example">Bentley, Mercedes S-Class</div><div class="vehicle-price" id="vp-first">from £220</div></div>
+                      <div class="vehicle-card" onclick="selectVehicle(this,'coach',380)"><div class="vehicle-icon">🚌</div><div class="vehicle-name">Executive Coach</div><div class="vehicle-pax">9–16 passengers</div><div class="vehicle-example">Mercedes Coach</div><div class="vehicle-price" id="vp-coach">from £380</div></div>
+                    </div>
+                    <div style="margin-top:20px;display:flex;gap:10px;justify-content:space-between">
+                      <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
+                      <button class="btn btn-gold" onclick="goStep(4)">Review Quote →</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div id="step4" style="display:none" class="fade-in">
+                  <div class="card" id="quote-card">
+                    <div class="card-title">Your Quote</div>
+                    <div id="quote-details"></div>
+                    <div style="margin-top:20px;display:flex;gap:10px;justify-content:space-between">
+                      <button class="btn btn-ghost" onclick="goStep(3)">← Back</button>
+                      <button class="btn btn-gold" onclick="confirmBooking()">Confirm Booking →</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Confirmed -->
+                <div id="step-done" style="display:none" class="fade-in">
+                  <div class="confirm-box">
+                    <span class="confirm-check">✅</span>
+                    <div class="confirm-id" id="conf-id">TRV-0000</div>
+                    <div style="font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:8px">Booking Confirmed</div>
+                    <div style="color:var(--muted);font-size:13px;margin-bottom:24px">Your driver has been matched and will monitor your flight in real time.</div>
+                    <div id="conf-driver-box" style="background:var(--surface);border:1px solid var(--border);padding:16px;margin-bottom:20px;text-align:left"></div>
+                    <button class="btn btn-gold" onclick="clientTab('track')">Track My Ride →</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AI ASSISTANT SIDEBAR -->
+              <div>
+                <div class="card">
+                  <div class="card-title">AI Booking Assistant <span class="tag">Claude</span></div>
+                  <div class="chat-wrap">
+                    <div class="chat-messages" id="book-chat"></div>
+                    <div class="chat-input-row">
+                      <input class="chat-input" id="book-chat-input" placeholder="Ask anything about your transfer…" onkeydown="if(event.key==='Enter')sendBookChat()">
+                      <button class="chat-send" onclick="sendBookChat()">Send</button>
+                    </div>
+                  </div>
+                  <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+                    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);margin-bottom:4px">Quick questions</div>
+                    <button class="btn btn-ghost btn-sm" onclick="quickChat('What vehicle do you recommend for 4 passengers and large luggage?')">Vehicle for 4 + large luggage</button>
+                    <button class="btn btn-ghost btn-sm" onclick="quickChat('How does flight monitoring work?')">How does flight tracking work?</button>
+                    <button class="btn btn-ghost btn-sm" onclick="quickChat('What is your cancellation policy?')">Cancellation policy</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIDES TAB -->
+        <div class="tab-pane" id="client-rides">
+          <div class="page-header">
+            <div class="page-title">My <em>Rides</em></div>
+            <div class="page-sub">Booking history & upcoming transfers</div>
+          </div>
+          <div class="content-grid">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-outline btn-sm" onclick="filterRides('all')">All</button>
+              <button class="btn btn-ghost btn-sm" onclick="filterRides('active')">Active</button>
+              <button class="btn btn-ghost btn-sm" onclick="filterRides('upcoming')">Upcoming</button>
+              <button class="btn btn-ghost btn-sm" onclick="filterRides('completed')">Completed</button>
+            </div>
+            <div id="rides-list"></div>
+          </div>
+        </div>
+
+        <!-- TRACK TAB -->
+        <div class="tab-pane" id="client-track">
+          <div class="page-header">
+            <div class="page-title">Live <em>Tracking</em></div>
+            <div class="page-sub">Real-time driver location · Flight-synced ETA</div>
+          </div>
+          <div class="content-grid">
+            <div class="main-sidebar">
+              <div>
+                <div class="map-wrap" style="height:420px">
+                  <canvas id="track-map" width="700" height="420"></canvas>
+                  <div class="map-overlay">
+                    <div class="map-pill">ETA: <em id="track-eta">12 min</em></div>
+                    <div class="map-pill">Driver: <em id="track-driver-name">Ahmed K.</em></div>
+                  </div>
+                </div>
+                <div class="card" style="margin-top:16px">
+                  <div class="card-title">Flight Status</div>
+                  <div id="track-flight-panel"></div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="card">
+                  <div class="card-title">Your Driver</div>
+                  <div id="track-driver-card"></div>
+                </div>
+                <div class="card">
+                  <div class="card-title">Journey Progress</div>
+                  <div id="track-progress"></div>
+                </div>
+                <div class="card">
+                  <div class="card-title">Contact Driver</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <button class="btn btn-outline" style="width:100%">📞 Call Driver</button>
+                    <button class="btn btn-ghost" style="width:100%">💬 Send Message</button>
+                    <button class="btn btn-red btn-sm" style="width:100%;margin-top:4px">⚠️ Report Issue</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUPPORT TAB -->
+        <div class="tab-pane" id="client-support">
+          <div class="page-header">
+            <div class="page-title">Support <em>Centre</em></div>
+            <div class="page-sub">AI-powered support · 24/7 availability</div>
+          </div>
+          <div class="content-grid">
+            <div class="main-sidebar">
+              <div class="card">
+                <div class="card-title">Chat with Traversa AI <span class="tag">Claude</span></div>
+                <div class="chat-wrap" style="height:460px">
+                  <div class="chat-messages" id="support-chat"></div>
+                  <div class="chat-input-row">
+                    <input class="chat-input" id="support-input" placeholder="Describe your issue…" onkeydown="if(event.key==='Enter')sendSupportChat()">
+                    <button class="chat-send" onclick="sendSupportChat()">Send</button>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="card">
+                  <div class="card-title">Open Tickets</div>
+                  <div style="color:var(--muted);font-size:13px;padding:8px 0">No open support tickets.</div>
+                </div>
+                <div class="card">
+                  <div class="card-title">Quick Actions</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <button class="btn btn-ghost" style="width:100%;justify-content:flex-start">📧 Email Support</button>
+                    <button class="btn btn-ghost" style="width:100%;justify-content:flex-start">📞 Call Operations</button>
+                    <button class="btn btn-ghost" style="width:100%;justify-content:flex-start">✏️ Modify Booking</button>
+                    <button class="btn btn-ghost" style="width:100%;justify-content:flex-start">❌ Cancel Booking</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ DRIVER VIEW ══ -->
+      <div class="view" id="view-driver">
+
+        <!-- JOBS TAB -->
+        <div class="tab-pane active" id="driver-jobs">
+          <div class="page-header">
+            <div class="page-title">Available <em>Jobs</em></div>
+            <div class="page-sub" id="driver-status-line">● Online · Mercedes E-Class · LK71 BWX</div>
+          </div>
+          <div class="content-grid">
+            <div class="alert alert-amber">You have <strong>3 new jobs</strong> available in your area. Jobs expire after 3 minutes if not accepted.</div>
+            <div style="display:flex;flex-direction:column;gap:12px" id="jobs-list"></div>
+          </div>
+        </div>
+
+        <!-- ACTIVE JOB TAB -->
+        <div class="tab-pane" id="driver-active">
+          <div class="page-header">
+            <div class="page-title">Active <em>Job</em></div>
+            <div class="page-sub">Navigate · Update client · Complete journey</div>
+          </div>
+          <div class="content-grid">
+            <div class="main-sidebar">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="map-wrap" style="height:340px">
+                  <canvas id="driver-map" width="700" height="340"></canvas>
+                  <div class="map-overlay">
+                    <div class="map-pill">Next: <em id="next-turn">Turn right in 0.4 mi</em></div>
+                    <div class="map-pill">ETA: <em id="driver-eta">8 min</em></div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-title">Navigation</div>
+                  <div id="nav-steps"></div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="card">
+                  <div class="card-title">Client</div>
+                  <div id="active-client-card"></div>
+                </div>
+                <div class="card">
+                  <div class="card-title">Flight Status</div>
+                  <div id="active-flight-panel"></div>
+                </div>
+                <div class="card">
+                  <div class="card-title">Journey</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <div class="earn-row"><span class="label">Booking</span><span class="val" style="font-family:'DM Mono',monospace">TRV-8821</span></div>
+                    <div class="earn-row"><span class="label">Distance</span><span class="val">28 km</span></div>
+                    <div class="earn-row"><span class="label">Your payout</span><span class="val" style="color:var(--gold)">£73</span></div>
+                    <div class="earn-row"><span class="label">Vehicle</span><span class="val">E-Class · LK71 BWX</span></div>
+                  </div>
+                  <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
+                    <button class="btn btn-green" style="width:100%" onclick="completeJob()">✓ Mark Complete</button>
+                    <button class="btn btn-red btn-sm" style="width:100%">⚠️ Report Issue</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EARNINGS TAB -->
+        <div class="tab-pane" id="driver-earnings">
+          <div class="page-header">
+            <div class="page-title">My <em>Earnings</em></div>
+            <div class="page-sub">Commission: 82% driver · 18% Traversa</div>
+          </div>
+          <div class="content-grid">
+            <div class="three-col">
+              <div class="card">
+                <div class="card-title">Today</div>
+                <div class="earnings-big">£<span id="earn-today">312</span></div>
+                <div style="color:var(--muted);font-size:12px;margin-top:6px">4 jobs · 94 km</div>
+              </div>
+              <div class="card">
+                <div class="card-title">This Week</div>
+                <div class="earnings-big">£<span id="earn-week">1,847</span></div>
+                <div style="color:var(--muted);font-size:12px;margin-top:6px">23 jobs · 612 km</div>
+              </div>
+              <div class="card">
+                <div class="card-title">This Month</div>
+                <div class="earnings-big">£<span id="earn-month">6,240</span></div>
+                <div style="color:var(--muted);font-size:12px;margin-top:6px">78 jobs · 2,148 km</div>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="card">
+                <div class="card-title">Today's Breakdown</div>
+                <div class="earnings-breakdown">
+                  <div class="earn-row"><span class="label">Gross fare collected</span><span class="val">£381</span></div>
+                  <div class="earn-row"><span class="label">Traversa commission (18%)</span><span class="val deduct" style="color:var(--red)">−£68.58</span></div>
+                  <div class="earn-row"><span class="label">Tips received</span><span class="val" style="color:var(--green)">+£20</span></div>
+                  <div class="earn-row total"><span class="label" style="color:var(--white)">Net payout</span><span class="val">£332.42</span></div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-title">Weekly Chart</div>
+                <canvas id="earnings-chart" width="300" height="160"></canvas>
+                <div class="chart-label-row" id="earnings-days"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title">Payout History</div>
+              <div class="t-wrap">
+                <table>
+                  <thead><tr><th>Date</th><th>Jobs</th><th>Gross</th><th>Commission</th><th>Net Payout</th><th>Status</th></tr></thead>
+                  <tbody id="payout-table"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROFILE TAB -->
+        <div class="tab-pane" id="driver-profile">
+          <div class="page-header">
+            <div class="page-title">Driver <em>Profile</em></div>
+            <div class="page-sub">Documents · Vehicle · Performance</div>
+          </div>
+          <div class="content-grid">
+            <div class="two-col">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="card">
+                  <div class="card-title">Personal Details</div>
+                  <div style="display:flex;flex-direction:column;gap:14px">
+                    <div class="form-group"><div class="form-label">Full Name</div><input class="form-input form-input-mono" value="Ahmed Karimi" readonly></div>
+                    <div class="form-group"><div class="form-label">Phone</div><input class="form-input form-input-mono" value="+44 7700 900321" readonly></div>
+                    <div class="form-group"><div class="form-label">Email</div><input class="form-input form-input-mono" value="ahmed.k@traversadriver.com" readonly></div>
+                    <div class="form-group"><div class="form-label">Base Area</div><input class="form-input form-input-mono" value="Heathrow / West London" readonly></div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-title">Vehicle</div>
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <div class="earn-row"><span class="label">Make & Model</span><span class="val">Mercedes-Benz E-Class</span></div>
+                    <div class="earn-row"><span class="label">Year</span><span class="val">2022</span></div>
+                    <div class="earn-row"><span class="label">Colour</span><span class="val">Obsidian Black</span></div>
+                    <div class="earn-row"><span class="label">Registration</span><span class="val" style="font-family:'DM Mono',monospace">LK71 BWX</span></div>
+                    <div class="earn-row"><span class="label">Class</span><span class="val"><span class="badge badge-active">Saloon · Executive</span></span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="card">
+                  <div class="card-title">Documents</div>
+                  <div id="docs-list"></div>
+                </div>
+                <div class="card">
+                  <div class="card-title">Performance</div>
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <div class="earn-row"><span class="label">Overall Rating</span><span class="val" style="color:var(--gold)">★ 4.98</span></div>
+                    <div class="earn-row"><span class="label">Total Rides</span><span class="val">1,247</span></div>
+                    <div class="earn-row"><span class="label">Acceptance Rate</span><span class="val" style="color:var(--green)">94%</span></div>
+                    <div class="earn-row"><span class="label">Completion Rate</span><span class="val" style="color:var(--green)">99.2%</span></div>
+                    <div class="earn-row"><span class="label">Avg Response Time</span><span class="val">38 sec</span></div>
+                    <div class="earn-row"><span class="label">On-time Arrival</span><span class="val" style="color:var(--green)">97.4%</span></div>
+                    <div class="earn-row"><span class="label">Member Since</span><span class="val">March 2021</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ ADMIN VIEW ══ -->
+      <div class="view" id="view-admin">
+
+        <!-- OVERVIEW -->
+        <div class="tab-pane active" id="admin-overview">
+          <div class="page-header">
+            <div class="page-title">Operations <em>Overview</em></div>
+            <div class="page-sub" id="admin-ts">Live · Updated now</div>
+          </div>
+          <div class="content-grid">
+            <div class="kpi-grid">
+              <div class="kpi"><div class="kpi-label">Active Rides</div><span class="kpi-value" id="kpi-rides">234</span><div class="kpi-delta">↑ 18 from 1h ago</div></div>
+              <div class="kpi"><div class="kpi-label">Revenue Today</div><span class="kpi-value" id="kpi-rev">£48,920</span><div class="kpi-delta">↑ 12% vs yesterday</div></div>
+              <div class="kpi"><div class="kpi-label">Drivers Online</div><span class="kpi-value" id="kpi-drivers">847</span><div class="kpi-delta">↑ 34 since 8am</div></div>
+              <div class="kpi"><div class="kpi-label">Avg Rating</div><span class="kpi-value" id="kpi-rating">4.97</span><div class="kpi-delta">↑ 0.01 this week</div></div>
+            </div>
+            <div class="two-col">
+              <div class="card">
+                <div class="card-title">Live Activity Feed <span id="feed-counter" style="color:var(--green);font-size:10px"></span></div>
+                <div class="feed" id="activity-feed"></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="card">
+                  <div class="card-title">Alerts</div>
+                  <div style="display:flex;flex-direction:column;gap:8px" id="alerts-panel">
+                    <div class="alert alert-amber">Flight EK201 delayed 40min → TRV-8820 ETA adjusted</div>
+                    <div class="alert alert-red">Driver DRV-041 license expires in 8 days</div>
+                    <div class="alert alert-amber">3 unassigned bookings in Tokyo require manual review</div>
+                    <div class="alert alert-green">Dubai hub: 98% on-time today</div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-title">Quick Actions</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <button class="btn btn-outline" style="width:100%;justify-content:flex-start" onclick="adminTab('bookings')">📋 View All Bookings</button>
+                    <button class="btn btn-ghost" style="width:100%;justify-content:flex-start" onclick="adminTab('drivers')">🚗 Manage Drivers</button>
+                    <button class="btn btn-ghost" style="width:100%;justify-content:flex-start" onclick="adminTab('pricing')">🏷 Adjust Pricing</button>
+                    <button class="btn btn-ghost" style="width:100%;justify-content:flex-start" onclick="adminTab('analytics')">📈 Analytics</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="three-col">
+              <div class="card">
+                <div class="card-title">Bookings by Status</div>
+                <div style="display:flex;flex-direction:column;gap:8px" id="status-breakdown"></div>
+              </div>
+              <div class="card">
+                <div class="card-title">Top Cities Today</div>
+                <div style="display:flex;flex-direction:column;gap:0" id="top-cities"></div>
+              </div>
+              <div class="card">
+                <div class="card-title">Vehicle Demand</div>
+                <canvas id="demand-chart" width="200" height="140"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOOKINGS -->
+        <div class="tab-pane" id="admin-bookings">
+          <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+            <div><div class="page-title">All <em>Bookings</em></div><div class="page-sub">Live · Filter · Manage</div></div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <select class="form-select" style="width:140px" onchange="filterBookings(this.value)"><option value="">All Statuses</option><option value="active">Active</option><option value="pending">Pending</option><option value="assigned">Assigned</option><option value="completed">Completed</option></select>
+              <button class="btn btn-gold btn-sm">+ New Booking</button>
+            </div>
+          </div>
+          <div class="content-grid">
+            <div class="card">
+              <div class="t-wrap">
+                <table>
+                  <thead><tr><th>ID</th><th>Client</th><th>Route</th><th>Flight</th><th>Scheduled</th><th>Driver</th><th>Vehicle</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody id="bookings-table"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVE MAP -->
+        <div class="tab-pane" id="admin-live">
+          <div class="page-header">
+            <div class="page-title">Live <em>Map</em></div>
+            <div class="page-sub">Real-time vehicle positions across all hubs</div>
+          </div>
+          <div class="content-grid">
+            <div class="map-wrap" style="height:500px">
+              <canvas id="admin-map" width="900" height="500"></canvas>
+              <div class="map-overlay">
+                <div class="map-pill"><em id="map-active-count">234</em> active rides</div>
+                <div style="display:flex;gap:12px">
+                  <div class="map-pill">🟡 Client pickup · 🔵 En route · 🟢 Completed</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DRIVERS -->
+        <div class="tab-pane" id="admin-drivers">
+          <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
+            <div><div class="page-title">Driver <em>Network</em></div><div class="page-sub">All operators · Performance · Status</div></div>
+            <div style="display:flex;gap:10px">
+              <select class="form-select" style="width:140px"><option>All Regions</option><option>London</option><option>Dubai</option><option>Singapore</option><option>New York</option></select>
+              <button class="btn btn-gold btn-sm" onclick="adminTab('vetting')">+ Onboard Driver</button>
+            </div>
+          </div>
+          <div class="content-grid">
+            <div class="card">
+              <div class="t-wrap">
+                <table>
+                  <thead><tr><th>ID</th><th>Name</th><th>Region</th><th>Vehicle</th><th>Rating</th><th>Rides</th><th>Acceptance</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody id="drivers-table"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VETTING -->
+        <div class="tab-pane" id="admin-vetting">
+          <div class="page-header">
+            <div class="page-title">Driver <em>Vetting</em></div>
+            <div class="page-sub">Onboarding pipeline · Document review · Approval</div>
+          </div>
+          <div class="content-grid">
+            <div class="pipeline" id="vetting-pipeline"></div>
+          </div>
+        </div>
+
+        <!-- CLIENTS -->
+        <div class="tab-pane" id="admin-clients">
+          <div class="page-header">
+            <div class="page-title">Client <em>Management</em></div>
+            <div class="page-sub">Accounts · Booking history · LTV</div>
+          </div>
+          <div class="content-grid">
+            <div class="card">
+              <div class="t-wrap">
+                <table>
+                  <thead><tr><th>Name</th><th>Email</th><th>Total Bookings</th><th>LTV</th><th>Last Ride</th><th>Status</th></tr></thead>
+                  <tbody id="clients-table"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ANALYTICS -->
+        <div class="tab-pane" id="admin-analytics">
+          <div class="page-header">
+            <div class="page-title">Business <em>Analytics</em></div>
+            <div class="page-sub">Revenue · Volume · Performance · Forecasting</div>
+          </div>
+          <div class="content-grid">
+            <div class="kpi-grid">
+              <div class="kpi"><div class="kpi-label">MTD Revenue</div><span class="kpi-value">£1.24M</span><div class="kpi-delta">↑ 23% vs last month</div></div>
+              <div class="kpi"><div class="kpi-label">MTD Bookings</div><span class="kpi-value">4,821</span><div class="kpi-delta">↑ 18% vs last month</div></div>
+              <div class="kpi"><div class="kpi-label">Avg Booking Value</div><span class="kpi-value">£257</span><div class="kpi-delta">↑ £12 vs last month</div></div>
+              <div class="kpi"><div class="kpi-label">Net Margin</div><span class="kpi-value">18.3%</span><div class="kpi-delta">↑ 0.4pp vs last month</div></div>
+            </div>
+            <div class="two-col">
+              <div class="card">
+                <div class="card-title">Revenue — Last 14 Days</div>
+                <canvas id="revenue-chart" width="500" height="180"></canvas>
+                <div class="chart-label-row" id="rev-days"></div>
+              </div>
+              <div class="card">
+                <div class="card-title">Booking Volume — Last 14 Days</div>
+                <canvas id="volume-chart" width="500" height="180"></canvas>
+                <div class="chart-label-row" id="vol-days"></div>
+              </div>
+            </div>
+            <div class="three-col">
+              <div class="card">
+                <div class="card-title">Revenue by City</div>
+                <div id="city-revenue"></div>
+              </div>
+              <div class="card">
+                <div class="card-title">Revenue by Vehicle Class</div>
+                <div id="vehicle-revenue"></div>
+              </div>
+              <div class="card">
+                <div class="card-title">Peak Hours</div>
+                <canvas id="hours-chart" width="220" height="140"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PAYOUTS -->
+        <div class="tab-pane" id="admin-payouts">
+          <div class="page-header">
+            <div class="page-title">Driver <em>Payouts</em></div>
+            <div class="page-sub">Weekly batch payments · Commission reconciliation</div>
+          </div>
+          <div class="content-grid">
+            <div class="three-col">
+              <div class="kpi"><div class="kpi-label">Pending Payouts</div><span class="kpi-value">£84,210</span><div class="kpi-delta">Next batch: Monday</div></div>
+              <div class="kpi"><div class="kpi-label">Paid This Month</div><span class="kpi-value">£1.02M</span><div class="kpi-delta">847 drivers paid</div></div>
+              <div class="kpi"><div class="kpi-label">Commission Earned</div><span class="kpi-value">£224K</span><div class="kpi-delta">MTD at 18%</div></div>
+            </div>
+            <div class="card">
+              <div class="t-wrap">
+                <table>
+                  <thead><tr><th>Driver</th><th>Region</th><th>Jobs</th><th>Gross</th><th>Commission</th><th>Net</th><th>Method</th><th>Status</th></tr></thead>
+                  <tbody id="payouts-table"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PRICING -->
+        <div class="tab-pane" id="admin-pricing">
+          <div class="page-header">
+            <div class="page-title">Pricing <em>Engine</em></div>
+            <div class="page-sub">Base rates · Zone pricing · Surcharges · Dynamic multipliers</div>
+          </div>
+          <div class="content-grid">
+            <div class="two-col">
+              <div class="card">
+                <div class="card-title">Base Rates by Vehicle</div>
+                <div class="price-table">
+                  <div class="price-row"><span class="price-zone">Saloon / Sedan</span><span class="price-value">£3.20/km</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Executive MPV</span><span class="price-value">£4.10/km</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Business SUV</span><span class="price-value">£4.80/km</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Minibus</span><span class="price-value">£5.50/km</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">First Class</span><span class="price-value">£9.80/km</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Executive Coach</span><span class="price-value">£14.00/km</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-title">Airport & Port Surcharges</div>
+                <div class="price-table">
+                  <div class="price-row"><span class="price-zone">Heathrow (LHR)</span><span class="price-value">+£8.00</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Gatwick (LGW)</span><span class="price-value">+£6.00</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">JFK / EWR</span><span class="price-value">+$12.00</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Dubai (DXB)</span><span class="price-value">+AED 25</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Changi (SIN)</span><span class="price-value">+SGD 8</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Cruise Ports</span><span class="price-value">+£5.00</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                </div>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="card">
+                <div class="card-title">Dynamic Multipliers</div>
+                <div class="price-table">
+                  <div class="price-row"><span class="price-zone">Peak Hours (06–09, 17–20)</span><span class="price-value">×1.25</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Late Night (22–05)</span><span class="price-value">×1.15</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">Public Holidays</span><span class="price-value">×1.40</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                  <div class="price-row"><span class="price-zone">High Demand Surge</span><span class="price-value">×1.00–2.00</span><span class="price-edit"><button class="btn btn-ghost btn-sm">Edit</button></span></div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-title">Commission Structure</div>
+                <div class="price-table">
+                  <div class="price-row"><span class="price-zone">Standard Driver Rate</span><span class="price-value">82%</span></div>
+                  <div class="price-row"><span class="price-zone">Traversa Platform Fee</span><span class="price-value">18%</span></div>
+                  <div class="price-row"><span class="price-zone">Elite Driver Bonus (>4.95★)</span><span class="price-value">+2% bonus</span></div>
+                  <div class="price-row"><span class="price-zone">Corporate Account Discount</span><span class="price-value">−10%</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUPPORT ADMIN -->
+        <div class="tab-pane" id="admin-support">
+          <div class="page-header">
+            <div class="page-title">Support <em>Centre</em></div>
+            <div class="page-sub">Tickets · Disputes · AI-assisted resolution</div>
+          </div>
+          <div class="content-grid">
+            <div class="three-col">
+              <div class="kpi"><div class="kpi-label">Open Tickets</div><span class="kpi-value">12</span><div class="kpi-delta">↓ 4 from yesterday</div></div>
+              <div class="kpi"><div class="kpi-label">Avg Resolution</div><span class="kpi-value">2.4h</span><div class="kpi-delta">↓ 0.6h vs last week</div></div>
+              <div class="kpi"><div class="kpi-label">CSAT Score</div><span class="kpi-value">94%</span><div class="kpi-delta">↑ 2% this month</div></div>
+            </div>
+            <div class="main-sidebar">
+              <div class="card">
+                <div class="t-wrap">
+                  <table>
+                    <thead><tr><th>ID</th><th>Client</th><th>Subject</th><th>Booking</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="tickets-table"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-title">AI Resolution Assistant <span class="tag">Claude</span></div>
+                <div class="chat-wrap" style="height:360px">
+                  <div class="chat-messages" id="admin-chat"></div>
+                  <div class="chat-input-row">
+                    <input class="chat-input" id="admin-chat-input" placeholder="Describe ticket or ask for help…" onkeydown="if(event.key==='Enter')sendAdminChat()">
+                    <button class="chat-send" onclick="sendAdminChat()">Send</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="tab-pane" id="admin-settings">
+          <div class="page-header">
+            <div class="page-title">Platform <em>Settings</em></div>
+            <div class="page-sub">Coverage · Integrations · Notifications · Compliance</div>
+          </div>
+          <div class="content-grid">
+            <div class="two-col">
+              <div class="card">
+                <div class="card-title">Coverage Zones</div>
+                <div style="display:flex;flex-direction:column;gap:8px" id="coverage-zones"></div>
+                <div style="margin-top:14px"><button class="btn btn-ghost btn-sm">+ Add Zone</button></div>
+              </div>
+              <div class="card">
+                <div class="card-title">API Integrations</div>
+                <div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border)">
+                  <div class="price-row"><span class="price-zone">FlightAware (Flight Data)</span><span class="badge badge-active">Connected</span></div>
+                  <div class="price-row"><span class="price-zone">Stripe (Payments)</span><span class="badge badge-active">Connected</span></div>
+                  <div class="price-row"><span class="price-zone">Twilio (SMS/Comms)</span><span class="badge badge-active">Connected</span></div>
+                  <div class="price-row"><span class="price-zone">Google Maps Platform</span><span class="badge badge-active">Connected</span></div>
+                  <div class="price-row"><span class="price-zone">Anthropic (AI)</span><span class="badge badge-active">Connected</span></div>
+                  <div class="price-row"><span class="price-zone">Salesforce CRM</span><span class="badge badge-pending">Config Required</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="card">
+                <div class="card-title">Notification Templates</div>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div class="earn-row"><span class="label">Booking Confirmation</span><button class="btn btn-ghost btn-sm">Edit</button></div>
+                  <div class="earn-row"><span class="label">Driver Assigned</span><button class="btn btn-ghost btn-sm">Edit</button></div>
+                  <div class="earn-row"><span class="label">Driver En Route</span><button class="btn btn-ghost btn-sm">Edit</button></div>
+                  <div class="earn-row"><span class="label">Flight Delay Alert</span><button class="btn btn-ghost btn-sm">Edit</button></div>
+                  <div class="earn-row"><span class="label">Journey Complete</span><button class="btn btn-ghost btn-sm">Edit</button></div>
+                  <div class="earn-row"><span class="label">Receipt / Invoice</span><button class="btn btn-ghost btn-sm">Edit</button></div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-title">Compliance & Legal</div>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div class="earn-row"><span class="label">GDPR Data Policy</span><button class="btn btn-ghost btn-sm">View</button></div>
+                  <div class="earn-row"><span class="label">Driver DBS Requirements</span><button class="btn btn-ghost btn-sm">View</button></div>
+                  <div class="earn-row"><span class="label">Insurance Minimum</span><span class="val">£5M</span></div>
+                  <div class="earn-row"><span class="label">Vehicle Age Limit</span><span class="val">5 years</span></div>
+                  <div class="earn-row"><span class="label">PCO Licence Required</span><span class="val">Yes</span></div>
+                  <div class="earn-row"><span class="label">Data Retention</span><span class="val">7 years</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /admin view -->
+    </div><!-- /main -->
+  </div><!-- /app-body -->
+
+  <!-- BOTTOM NAV -->
+  <div id="bottom-nav">
+    <div class="bn-item active" id="bn-0" onclick="switchTab(0)"><span class="bn-icon">📖</span>Book</div>
+    <div class="bn-item" id="bn-1" onclick="switchTab(1)"><span class="bn-icon">📋</span>My Rides</div>
+    <div class="bn-item" id="bn-2" onclick="switchTab(2)"><span class="bn-icon">📍</span>Track</div>
+    <div class="bn-item" id="bn-3" onclick="switchTab(3)"><span class="bn-icon">💬</span>Support</div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════ */
+const BOOKINGS = [
+  {id:'TRV-8821',client:'James Whitmore',email:'j.whitmore@acmecorp.com',from:'Heathrow T5',to:'The Connaught, Mayfair',flight:'BA0117',status:'active',driver:'Ahmed K.',vehicle:'Mercedes E-Class',pax:2,price:89,scheduled:'14:35',distance:'28 km',city:'London'},
+  {id:'TRV-8820',client:'Priya Nair',email:'pnair@ventures.io',from:'JFK Terminal 4',to:'The Plaza Hotel',flight:'EK201',status:'pending',driver:null,vehicle:'Cadillac Escalade',pax:3,price:198,scheduled:'16:20',distance:'26 km',city:'New York'},
+  {id:'TRV-8819',client:'Sophia Reeves',email:'s.reeves@luxe.com',from:'The Ritz, Paris',to:'CDG Terminal 2E',flight:'AF1680',status:'assigned',driver:'Pierre M.',vehicle:'Mercedes S-Class',pax:1,price:245,scheduled:'08:15',distance:'36 km',city:'Paris'},
+  {id:'TRV-8818',client:'Marcus Lange',email:'m.lange@fund.eu',from:'Dubai International T3',to:'Atlantis, Palm',flight:'LH3402',status:'active',driver:'Omar S.',vehicle:'Toyota Alphard',pax:4,price:145,scheduled:'11:50',distance:'34 km',city:'Dubai'},
+  {id:'TRV-8817',client:'Yuki Tanaka',email:'yuki@global.jp',from:'Changi T1',to:'Marina Bay Sands',flight:'SQ321',status:'completed',driver:'Wei L.',vehicle:'Mercedes E-Class',pax:2,price:82,scheduled:'09:00',distance:'21 km',city:'Singapore'},
+  {id:'TRV-8816',client:'Elena Volkov',email:'e.volkov@corp.ru',from:'Heathrow T3',to:'Claridge\'s Hotel',flight:'SU249',status:'completed',driver:'David O.',vehicle:'BMW 7 Series',pax:1,price:112,scheduled:'17:40',distance:'30 km',city:'London'},
+  {id:'TRV-8815',client:'Thomas Dubois',email:'tdubois@banque.fr',from:'Southampton Cruise Port',to:'Gatwick South',flight:'—',status:'pending',driver:null,vehicle:'Mercedes V-Class',pax:6,price:310,scheduled:'07:00',distance:'88 km',city:'London'},
+  {id:'TRV-8814',client:'Amara Osei',email:'a.osei@intl.org',from:'Narita T2',to:'The Peninsula Tokyo',flight:'JL744',status:'assigned',driver:'Kenji T.',vehicle:'Toyota Century',pax:2,price:190,scheduled:'13:20',distance:'65 km',city:'Tokyo'},
+];
+
+const DRIVERS = [
+  {id:'DRV-001',name:'Ahmed Karimi',region:'London',vehicle:'Mercedes E-Class',plate:'LK71 BWX',rating:4.98,rides:1247,accept:94,status:'active',earnings_today:312,earnings_week:1847},
+  {id:'DRV-002',name:'Pierre Moreau',region:'Paris',vehicle:'Mercedes S-Class',plate:'AA-123-BB',rating:4.96,rides:834,accept:91,status:'active',earnings_today:245,earnings_week:1210},
+  {id:'DRV-003',name:'Omar Salah',region:'Dubai',vehicle:'Toyota Alphard',plate:'Dubai A12345',rating:4.97,rides:2103,accept:97,status:'active',earnings_today:198,earnings_week:980},
+  {id:'DRV-004',name:'Wei Lin',region:'Singapore',vehicle:'Mercedes E-Class',plate:'SJF 1234A',rating:4.95,rides:689,accept:89,status:'active',earnings_today:156,earnings_week:820},
+  {id:'DRV-005',name:'David Owusu',region:'London',vehicle:'BMW 7 Series',plate:'MW21 RKT',rating:4.93,rides:421,accept:88,status:'active',earnings_today:189,earnings_week:940},
+  {id:'DRV-006',name:'Kenji Tanaka',region:'Tokyo',vehicle:'Toyota Century',plate:'Tokyo 1234',rating:5.00,rides:312,accept:99,status:'active',earnings_today:145,earnings_week:720},
+  {id:'DRV-007',name:'Carlos Rivera',region:'New York',vehicle:'Cadillac Escalade',plate:'NY ABC1234',rating:4.91,rides:567,accept:86,status:'offline',earnings_today:0,earnings_week:560},
+  {id:'DRV-008',name:'Fatima Al-Hassan',region:'Dubai',vehicle:'Lexus LX',plate:'Dubai B98765',rating:4.99,rides:891,accept:96,status:'active',earnings_today:221,earnings_week:1100},
+  {id:'DRV-009',name:'Luca Benedetti',region:'Milan',vehicle:'Maserati Quattroporte',plate:'MI 123AB',rating:4.94,rides:198,accept:92,status:'active',earnings_today:310,earnings_week:1450},
+  {id:'DRV-010',name:'Sarah Mitchell',region:'London',vehicle:'Mercedes V-Class',plate:'SH70 VAN',rating:4.90,rides:723,accept:85,status:'offline',earnings_today:0,earnings_week:620},
+];
+
+const CLIENTS_DATA = [
+  {name:'James Whitmore',email:'j.whitmore@acmecorp.com',bookings:47,ltv:'£8,240',last:'Today',status:'VIP'},
+  {name:'Priya Nair',email:'pnair@ventures.io',bookings:23,ltv:'£4,120',last:'Today',status:'Regular'},
+  {name:'Marcus Lange',email:'m.lange@fund.eu',bookings:61,ltv:'£14,800',last:'Today',status:'VIP'},
+  {name:'Elena Volkov',email:'e.volkov@corp.ru',bookings:18,ltv:'£3,200',last:'Yesterday',status:'Regular'},
+  {name:'Thomas Dubois',email:'tdubois@banque.fr',bookings:34,ltv:'£7,820',last:'2 days ago',status:'VIP'},
+  {name:'Yuki Tanaka',email:'yuki@global.jp',bookings:12,ltv:'£1,940',last:'Today',status:'Regular'},
+];
+
+const FLIGHTS = {
+  'BA0117':{airline:'British Airways',from:'New York JFK',to:'London Heathrow',dep:'09:30',arr:'21:15',status:'On Time',gate:'B42'},
+  'EK201':{airline:'Emirates',from:'Dubai DXB',to:'New York JFK',dep:'08:55',arr:'14:40',status:'Delayed +40min',gate:'C12'},
+  'AF1680':{airline:'Air France',from:'Paris CDG',to:'London LHR',dep:'07:30',arr:'08:00',status:'On Time',gate:'2E-24'},
+  'LH3402':{airline:'Lufthansa',from:'Frankfurt FRA',to:'Dubai DXB',dep:'10:00',arr:'14:30',status:'Landed',gate:'T3'},
+  'SQ321':{airline:'Singapore Airlines',from:'Tokyo NRT',to:'Singapore SIN',dep:'06:10',arr:'11:55',status:'Landed',gate:'T1-A12'},
+  'SU249':{airline:'Aeroflot',from:'Moscow SVO',to:'London LHR',dep:'14:00',arr:'16:20',status:'On Time',gate:'T3-B8'},
+};
+
+const ACTIVITY_FEED_ITEMS = [
+  {icon:'🟢',text:'<strong>TRV-8821</strong> driver arrived at Heathrow T5',time:'2 min ago',col:'var(--green)'},
+  {icon:'📍',text:'<strong>Omar S.</strong> en route to Atlantis Palm, ETA 12 min',time:'4 min ago',col:'var(--gold)'},
+  {icon:'✅',text:'<strong>TRV-8817</strong> completed — Yuki Tanaka rated 5★',time:'8 min ago',col:'var(--green)'},
+  {icon:'📋',text:'New booking <strong>TRV-8820</strong> — JFK to Plaza Hotel',time:'11 min ago',col:'var(--blue)'},
+  {icon:'⚡',text:'<strong>EK201</strong> delayed 40min — TRV-8820 ETA adjusted',time:'15 min ago',col:'var(--amber)'},
+  {icon:'🚗',text:'<strong>Pierre M.</strong> accepted TRV-8819 — Paris CDG run',time:'22 min ago',col:'var(--gold)'},
+  {icon:'✅',text:'<strong>TRV-8816</strong> completed — Elena Volkov rated 5★',time:'38 min ago',col:'var(--green)'},
+  {icon:'💳',text:'Payment of <strong>£89</strong> received for TRV-8821',time:'45 min ago',col:'var(--green)'},
+];
+
+const SUPPORT_TICKETS = [
+  {id:'TKT-441',client:'Thomas Dubois',subject:'Driver 20min late — Southampton',booking:'TRV-8815',priority:'High',status:'Open'},
+  {id:'TKT-440',client:'Anonymous',subject:'App not showing driver location',booking:'TRV-8818',priority:'Medium',status:'In Progress'},
+  {id:'TKT-439',client:'Elena Volkov',subject:'Receipt not received',booking:'TRV-8816',priority:'Low',status:'Resolved'},
+];
+
+const COVERAGE_ZONES_DATA = [
+  {city:'London',airports:5,drivers:124,status:'Active'},
+  {city:'Dubai',airports:2,drivers:87,status:'Active'},
+  {city:'Singapore',airports:1,drivers:45,status:'Active'},
+  {city:'New York',airports:3,drivers:98,status:'Active'},
+  {city:'Paris',airports:2,drivers:63,status:'Active'},
+  {city:'Tokyo',airports:2,drivers:41,status:'Active'},
+  {city:'Sydney',airports:1,drivers:32,status:'Active'},
+  {city:'Miami',airports:1,drivers:28,status:'Active'},
+];
+
+/* ═══════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════ */
+let currentRole = null;
+let currentStep = 1;
+let selectedType = 'arrival';
+let selectedVehicle = null;
+let selectedVehiclePrice = 65;
+let bookingConfirmed = null;
+let notifOpen = false;
+let clientTabIdx = 0;
+let driverTabIdx = 0;
+let trackMapAnim = null;
+let driverMapAnim = null;
+let adminMapAnim = null;
+let liveTimer = null;
+let feedTimer = null;
+let jobTimers = {};
+
+/* ═══════════════════════════════════════════
+   APP ROUTING
+═══════════════════════════════════════════ */
+function enterApp(role) {
+  currentRole = role;
+  document.getElementById('welcome').classList.add('out');
+  setTimeout(() => {
+    document.getElementById('app').classList.add('active');
+    document.getElementById('tb-role').textContent = role === 'client' ? 'Client Portal' : role === 'driver' ? 'Driver App' : 'Admin Dashboard';
+    if (role === 'admin') {
+      document.getElementById('sidebar').classList.add('active');
+      document.getElementById('bottom-nav').style.display = 'none';
+    } else {
+      document.getElementById('bottom-nav').classList.add('active');
+      document.getElementById('sidebar').classList.remove('active');
+      setupBottomNav(role);
+    }
+    document.getElementById('view-client').className = 'view' + (role==='client'?' active':'');
+    document.getElementById('view-driver').className = 'view' + (role==='driver'?' active':'');
+    document.getElementById('view-admin').className = 'view' + (role==='admin'?' active':'');
+    initRole(role);
+  }, 400);
+}
+
+function goHome() {
+  currentRole = null;
+  if (liveTimer) clearInterval(liveTimer);
+  if (feedTimer) clearInterval(feedTimer);
+  document.getElementById('app').classList.remove('active');
+  const w = document.getElementById('welcome');
+  w.classList.remove('out');
+  stopMaps();
+}
+
+function stopMaps() {
+  if (trackMapAnim) cancelAnimationFrame(trackMapAnim);
+  if (driverMapAnim) cancelAnimationFrame(driverMapAnim);
+  if (adminMapAnim) cancelAnimationFrame(adminMapAnim);
+}
+
+function setupBottomNav(role) {
+  const tabs = role === 'client'
+    ? ['Book','My Rides','Track','Support']
+    : ['Available Jobs','Active Job','Earnings','Profile'];
+  const icons = role === 'client'
+    ? ['📖','📋','📍','💬']
+    : ['💼','🗺','💷','👤'];
+  for (let i=0;i<4;i++) {
+    document.getElementById('bn-'+i).innerHTML = `<span class="bn-icon">${icons[i]}</span>${tabs[i]}`;
+    document.getElementById('bn-'+i).className = 'bn-item' + (i===0?' active':'');
+  }
+}
+
+function switchTab(idx) {
+  for (let i=0;i<4;i++) {
+    const el = document.getElementById('bn-'+i);
+    if (el) el.className = 'bn-item'+(i===idx?' active':'');
+  }
+  if (currentRole === 'client') {
+    const tabs = ['client-book','client-rides','client-track','client-support'];
+    clientTab(tabs[idx].replace('client-',''));
+  } else if (currentRole === 'driver') {
+    const tabs = ['jobs','active','earnings','profile'];
+    driverTab(tabs[idx]);
+  }
+}
+
+function clientTab(tab) {
+  const tabs = ['book','rides','track','support'];
+  const idx = tabs.indexOf(tab);
+  tabs.forEach(t => {
+    document.getElementById('client-'+t).className = 'tab-pane' + (t===tab?' active':'');
+  });
+  for (let i=0;i<4;i++) {
+    const el = document.getElementById('bn-'+i);
+    if (el) el.className = 'bn-item'+(i===idx?' active':'');
+  }
+  if (tab==='track') initTrackMap();
+  if (tab==='rides') renderRides();
+  if (tab==='support') initSupportChat();
+}
+
+function driverTab(tab) {
+  const tabs = ['jobs','active','earnings','profile'];
+  const idx = tabs.indexOf(tab);
+  tabs.forEach(t => {
+    document.getElementById('driver-'+t).className = 'tab-pane' + (t===tab?' active':'');
+  });
+  for (let i=0;i<4;i++) {
+    const el = document.getElementById('bn-'+i);
+    if (el) el.className = 'bn-item'+(i===idx?' active':'');
+  }
+  if (tab==='active') initDriverMap();
+  if (tab==='earnings') initEarningsChart();
+  if (tab==='profile') renderProfile();
+}
+
+function adminTab(tab) {
+  const all = ['overview','bookings','live','drivers','vetting','clients','analytics','payouts','pricing','support','settings'];
+  all.forEach(t => {
+    const el = document.getElementById('admin-'+t);
+    if (el) el.className = 'tab-pane'+(t===tab?' active':'');
+  });
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  const clicked = Array.from(document.querySelectorAll('.sb-item')).find(el => el.getAttribute('onclick') && el.getAttribute('onclick').includes("'"+tab+"'"));
+  if (clicked) clicked.classList.add('active');
+  if (tab==='analytics') initAnalyticsCharts();
+  if (tab==='live') initAdminMap();
+  if (tab==='bookings') renderBookingsTable();
+  if (tab==='drivers') renderDriversTable();
+  if (tab==='vetting') renderVetting();
+  if (tab==='clients') renderClientsTable();
+  if (tab==='payouts') renderPayouts();
+  if (tab==='support') { renderTickets(); initAdminChat(); }
+  if (tab==='settings') renderSettings();
+}
+
+/* ═══════════════════════════════════════════
+   INIT PER ROLE
+═══════════════════════════════════════════ */
+function initRole(role) {
+  renderNotifications();
+  startLiveSim();
+  if (role==='client') {
+    goStep(1);
+    initBookChat();
+    renderRides();
+    renderTrackDriver();
+  } else if (role==='driver') {
+    renderJobs();
+    renderActiveJob();
+    renderPayoutHistory();
+    renderDocs();
+  } else {
+    renderOverview();
+    renderBookingsTable();
+    renderDriversTable();
+    renderVetting();
+    renderClientsTable();
+    renderSettings();
+  }
+}
+
+/* ═══════════════════════════════════════════
+   LIVE SIMULATION
+═══════════════════════════════════════════ */
+function startLiveSim() {
+  let rides = 234, drivers = 847, rev = 48920;
+  liveTimer = setInterval(() => {
+    rides += Math.floor(Math.random()*3-1);
+    drivers += Math.floor(Math.random()*5-2);
+    rev += Math.floor(Math.random()*200+50);
+    document.getElementById('kpi-rides') && (document.getElementById('kpi-rides').textContent = rides);
+    document.getElementById('kpi-drivers') && (document.getElementById('kpi-drivers').textContent = drivers);
+    document.getElementById('kpi-rev') && (document.getElementById('kpi-rev').textContent = '£'+rev.toLocaleString());
+    document.getElementById('ws2') && (document.getElementById('ws2').textContent = rides);
+    document.getElementById('ws1') && (document.getElementById('ws1').textContent = drivers);
+    document.getElementById('ws3') && (document.getElementById('ws3').textContent = '£'+rev.toLocaleString());
+    document.getElementById('live-count') && (document.getElementById('live-count').textContent = rides+' active rides');
+    document.getElementById('map-active-count') && (document.getElementById('map-active-count').textContent = rides);
+  }, 3500);
+  let feedIdx = 0;
+  feedTimer = setInterval(() => {
+    const feed = document.getElementById('activity-feed');
+    if (!feed) return;
+    const item = ACTIVITY_FEED_ITEMS[feedIdx % ACTIVITY_FEED_ITEMS.length];
+    const el = document.createElement('div');
+    el.className = 'feed-item fade-in';
+    el.innerHTML = `<div class="feed-dot" style="background:${item.col}"></div><div><div class="feed-text">${item.text}</div><div class="feed-time">${item.time}</div></div>`;
+    feed.insertBefore(el, feed.firstChild);
+    if (feed.children.length > 10) feed.removeChild(feed.lastChild);
+    feedIdx++;
+  }, 4000);
+}
+
+/* ═══════════════════════════════════════════
+   BOOKING WIZARD
+═══════════════════════════════════════════ */
+function selectType(el, type) {
+  selectedType = type;
+  document.querySelectorAll('#type-grid .vehicle-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selectVehicle(el, type, price) {
+  selectedVehicle = type;
+  selectedVehiclePrice = price;
+  document.querySelectorAll('#vehicle-select .vehicle-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function lookupFlight(val) {
+  val = val.toUpperCase().trim();
+  if (FLIGHTS[val]) {
+    const f = FLIGHTS[val];
+    const box = document.getElementById('flight-info-box');
+    box.textContent = `✈ ${f.airline} · ${f.from} → ${f.to} · Dep ${f.dep} · Arr ${f.arr} · Status: ${f.status} · Gate ${f.gate}`;
+    document.getElementById('flight-lookup-result').style.display='block';
+    if (f.status.includes('Delayed')) {
+      box.className = 'alert alert-amber';
+    } else if (f.status === 'Landed') {
+      box.className = 'alert alert-green';
+      box.textContent = '✅ '+box.textContent;
+    } else {
+      box.className = 'alert alert-green';
+    }
+  } else {
+    document.getElementById('flight-lookup-result').style.display='none';
+  }
+}
+
+function goStep(n) {
+  for (let i=1;i<=4;i++) {
+    const el = document.getElementById('step'+i);
+    if (el) el.style.display = i===n?'block':'none';
+  }
+  document.getElementById('step-done').style.display='none';
+  for (let i=1;i<=4;i++) {
+    const c = document.getElementById('sc'+i);
+    const l = document.getElementById('sl'+i);
+    if (c) {
+      c.className = 'step-circle' + (i<n?' done':i===n?' active':'');
+    }
+    if (l) l.className = 'step-line'+(i<n?' done':'');
+  }
+  currentStep = n;
+  if (n===4) renderQuote();
+}
+
+function renderQuote() {
+  const flight = document.getElementById('inp-flight').value || '—';
+  const pickup = document.getElementById('inp-pickup').value || 'Heathrow T5';
+  const dropoff = document.getElementById('inp-dropoff').value || 'Central London';
+  const pax = document.getElementById('inp-pax').value || '1';
+  const dist = Math.floor(Math.random()*20+15);
+  const baseKm = selectedVehiclePrice * 0.045 * dist;
+  const airport = 8;
+  const vat = (baseKm + airport) * 0.2;
+  const total = Math.round(baseKm + airport + vat);
+  const driver = DRIVERS[Math.floor(Math.random()*DRIVERS.filter(d=>d.status==='active').length)];
+  document.getElementById('quote-card').querySelector('.card-title').textContent = 'Your Quote';
+  document.getElementById('quote-details').innerHTML = `
+    <div class="earnings-breakdown" style="margin-bottom:16px">
+      <div class="earn-row"><span class="label">Route</span><span class="val">${pickup} → ${dropoff}</span></div>
+      <div class="earn-row"><span class="label">Flight</span><span class="val" style="font-family:'DM Mono',monospace">${flight}</span></div>
+      <div class="earn-row"><span class="label">Passengers</span><span class="val">${pax}</span></div>
+      <div class="earn-row"><span class="label">Estimated Distance</span><span class="val">${dist} km</span></div>
+      <div class="earn-row"><span class="label">Vehicle</span><span class="val">${selectedVehicle||'saloon'} class</span></div>
+      <div class="earn-row"><span class="label">Base fare</span><span class="val">£${Math.round(baseKm)}</span></div>
+      <div class="earn-row"><span class="label">Airport surcharge</span><span class="val">£${airport}</span></div>
+      <div class="earn-row"><span class="label">VAT (20%)</span><span class="val">£${Math.round(vat)}</span></div>
+      <div class="earn-row total"><span class="label" style="color:var(--white);font-weight:500">Total</span><span class="val" style="font-family:'Cormorant Garamond',serif;font-size:22px">£${total}</span></div>
+    </div>
+    <div class="card-sm" style="background:var(--surface)">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:40px;height:40px;background:var(--gold-dim);border:1px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px">🚗</div>
+        <div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:17px">${driver.name}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">★ ${driver.rating} · ${driver.rides} rides · ${driver.vehicle}</div>
+        </div>
+      </div>
+    </div>
+    <div class="alert alert-green" style="margin-top:12px">✈ Live flight monitoring included — your driver adjusts automatically to any delay or gate change.</div>
+  `;
+}
+
+function confirmBooking() {
+  const id = 'TRV-'+Math.floor(8900+Math.random()*99);
+  const driver = DRIVERS.filter(d=>d.status==='active')[Math.floor(Math.random()*5)];
+  document.getElementById('conf-id').textContent = id;
+  document.getElementById('conf-driver-box').innerHTML = `
+    <div style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Your Driver</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">🚗</div>
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:18px">${driver.name}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">★ ${driver.rating} · ${driver.vehicle} · ${driver.plate}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);margin-top:4px">● Monitoring your flight now</div>
+      </div>
+    </div>
+  `;
+  for (let i=1;i<=4;i++) {
+    const el = document.getElementById('step'+i);
+    if (el) el.style.display='none';
+  }
+  document.getElementById('step-done').style.display='block';
+  for (let i=1;i<=4;i++) {
+    const c = document.getElementById('sc'+i);
+    const l = document.getElementById('sl'+i);
+    if (c) c.className = 'step-circle done';
+    if (l) l.className = 'step-line done';
+  }
+  bookingConfirmed = {id, driver};
+}
+
+/* ═══════════════════════════════════════════
+   CLIENT — RIDES
+═══════════════════════════════════════════ */
+function renderRides(filter='all') {
+  const el = document.getElementById('rides-list');
+  if (!el) return;
+  const shown = filter==='all' ? BOOKINGS : BOOKINGS.filter(b=>b.status===filter);
+  el.innerHTML = shown.map(b=>`
+    <div class="list-item">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">
+            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold)">${b.id}</span>
+            <span class="badge badge-${b.status}">${b.status}</span>
+          </div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:16px;margin-bottom:4px">${b.from} → ${b.to}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">${b.flight!=='—'?'✈ '+b.flight+' · ':''} ${b.scheduled} · ${b.distance} · ${b.pax} pax</div>
+          ${b.driver?`<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:4px">Driver: ${b.driver}</div>`:'<div style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--amber);margin-top:4px">Awaiting driver assignment</div>'}
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--gold);font-weight:300">£${b.price}</div>
+          ${b.status==='completed'?'<div style="margin-top:8px"><button class="btn btn-ghost btn-sm">Download Receipt</button></div>':''}
+          ${b.status==='active'?'<div style="margin-top:8px"><button class="btn btn-outline btn-sm" onclick="clientTab(\'track\')">Track →</button></div>':''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterRides(f) {
+  renderRides(f);
+  document.querySelectorAll('#client-rides .btn').forEach(b=>b.className='btn btn-ghost btn-sm');
+  event.target.className='btn btn-outline btn-sm';
+}
+
+/* ═══════════════════════════════════════════
+   CLIENT — TRACK MAP
+═══════════════════════════════════════════ */
+function renderTrackDriver() {
+  document.getElementById('track-driver-card').innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div style="width:48px;height:48px;background:var(--gold-dim);border:1px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px">🚗</div>
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:18px">Ahmed Karimi</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">★ 4.98 · 1,247 rides</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green)">● En route to you</div>
+      </div>
+    </div>
+    <div class="earnings-breakdown">
+      <div class="earn-row"><span class="label">Vehicle</span><span class="val">Mercedes E-Class</span></div>
+      <div class="earn-row"><span class="label">Plate</span><span class="val" style="font-family:'DM Mono',monospace">LK71 BWX</span></div>
+      <div class="earn-row"><span class="label">Colour</span><span class="val">Obsidian Black</span></div>
+    </div>
+  `;
+  document.getElementById('track-flight-panel').innerHTML = buildFlightPanel('BA0117');
+  document.getElementById('track-progress').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div><div style="font-size:13px">Driver assigned</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);margin-left:auto">✓</div></div>
+      <div style="display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div><div style="font-size:13px">En route to pickup</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);margin-left:auto">✓</div></div>
+      <div style="display:flex;align-items:center;gap:10px"><div style="width:8px;height:8px;border-radius:50%;background:var(--gold);animation:pulse 2s infinite"></div><div style="font-size:13px;color:var(--gold)">Driver at pickup</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);margin-left:auto">Now</div></div>
+      <div style="display:flex;align-items:center;gap:10px;opacity:.4"><div style="width:8px;height:8px;border-radius:50%;background:var(--dim)"></div><div style="font-size:13px">Journey in progress</div></div>
+      <div style="display:flex;align-items:center;gap:10px;opacity:.4"><div style="width:8px;height:8px;border-radius:50%;background:var(--dim)"></div><div style="font-size:13px">Arrived at destination</div></div>
+    </div>
+  `;
+}
+
+function buildFlightPanel(code) {
+  const f = FLIGHTS[code] || FLIGHTS['BA0117'];
+  const isDelayed = f.status.includes('Delayed');
+  return `
+    <div class="flight-panel">
+      <div class="flight-row">
+        <div>
+          <div class="flight-number">${code}</div>
+          <div class="flight-route">${f.from} → ${f.to}</div>
+        </div>
+        <span class="badge ${isDelayed?'badge-pending':'badge-active'}">${f.status}</span>
+      </div>
+      <div class="flight-status-row">
+        <div class="flight-col"><div class="flight-col-label">Departure</div><div class="flight-col-value">${f.dep}</div></div>
+        <div class="flight-col"><div class="flight-col-label">Arrival</div><div class="flight-col-value">${f.arr}</div></div>
+        <div class="flight-col"><div class="flight-col-label">Gate</div><div class="flight-col-value">${f.gate}</div></div>
+        <div class="flight-col"><div class="flight-col-label">Airline</div><div class="flight-col-value" style="font-size:11px">${f.airline}</div></div>
+      </div>
+    </div>
+  `;
+}
+
+function initTrackMap() {
+  const canvas = document.getElementById('track-map');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 700;
+  let t = 0;
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#0c0c1a';
+    ctx.fillRect(0,0,W,H);
+    // Grid streets
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let x=0;x<W;x+=60) { ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+    for (let y=0;y<H;y+=60) { ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+    // Main roads
+    ctx.strokeStyle = 'rgba(255,255,255,0.09)';
+    ctx.lineWidth = 3;
+    [[0,H/2,W,H/2],[W/3,0,W/3,H],[2*W/3,0,2*W/3,H],[0,H/3,W,H/3]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
+    // Route
+    const rx = [W*0.12, W*0.25, W*0.4, W*0.55, W*0.68, W*0.78];
+    const ry = [H*0.7,  H*0.55, H*0.4, H*0.35, H*0.42, H*0.35];
+    ctx.strokeStyle = 'rgba(201,169,110,0.5)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8,4]);
+    ctx.beginPath();
+    ctx.moveTo(rx[0],ry[0]);
+    for (let i=1;i<rx.length;i++) ctx.lineTo(rx[i],ry[i]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Destination
+    const dx=rx[rx.length-1], dy=ry[ry.length-1];
+    ctx.beginPath();ctx.arc(dx,dy,14,0,Math.PI*2);ctx.fillStyle='rgba(201,169,110,0.15)';ctx.fill();
+    ctx.beginPath();ctx.arc(dx,dy,8,0,Math.PI*2);ctx.fillStyle='var(--gold)';ctx.fill();
+    ctx.fillStyle='#0c0c1a';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('D',dx,dy);
+    // Driver position along route
+    const prog = (t*0.0004)%1;
+    const seg = Math.min(Math.floor(prog*(rx.length-1)),rx.length-2);
+    const frac = prog*(rx.length-1)-seg;
+    const px = rx[seg]+(rx[seg+1]-rx[seg])*frac;
+    const py = ry[seg]+(ry[seg+1]-ry[seg])*frac;
+    ctx.beginPath();ctx.arc(px,py,18,0,Math.PI*2);ctx.fillStyle='rgba(74,222,128,0.12)';ctx.fill();
+    ctx.beginPath();ctx.arc(px,py,10,0,Math.PI*2);ctx.fillStyle='var(--green)';ctx.fill();
+    ctx.fillStyle='#0c0c1a';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🚗',px,py);
+    // ETA update
+    const etaMin = Math.max(1, Math.round((1-prog)*14));
+    const etaEl = document.getElementById('track-eta');
+    if (etaEl) etaEl.textContent = etaMin+' min';
+    t++;
+    trackMapAnim = requestAnimationFrame(draw);
+  }
+  if (trackMapAnim) cancelAnimationFrame(trackMapAnim);
+  draw();
+  renderTrackDriver();
+}
+
+/* ═══════════════════════════════════════════
+   DRIVER — JOBS
+═══════════════════════════════════════════ */
+function renderJobs() {
+  const el = document.getElementById('jobs-list');
+  if (!el) return;
+  const jobs = [
+    {id:'TRV-8820',from:'JFK Terminal 4',to:'The Plaza Hotel',flight:'EK201',pax:3,vehicle:'Executive MPV',payout:163,distance:'26 km',city:'New York',delay:'2:47'},
+    {id:'TRV-8815',from:'Southampton Port',to:'Gatwick South',pax:6,vehicle:'Minibus',payout:254,distance:'88 km',city:'London',delay:'1:55'},
+    {id:'TRV-8823',from:'Heathrow T2',to:'Mayfair, London',flight:'TK1987',pax:2,vehicle:'Saloon',payout:73,distance:'26 km',city:'London',delay:'2:12'},
+  ];
+  el.innerHTML = jobs.map((j,i)=>`
+    <div class="job-card${i===0?' urgent':''}" id="job-${j.id}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px">
+            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold)">${j.id}</span>
+            <span class="timer-pill" id="timer-${j.id}">⏱ ${j.delay}</span>
+          </div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:18px;margin-bottom:4px">${j.from} → ${j.to}</div>
+          <div class="job-meta">
+            ${j.flight?`<div class="job-meta-item">✈ <em>${j.flight}</em></div>`:'<div class="job-meta-item">🚢 <em>Cruise Port</em></div>'}
+            <div class="job-meta-item">👥 <em>${j.pax} pax</em></div>
+            <div class="job-meta-item">🚗 <em>${j.vehicle}</em></div>
+            <div class="job-meta-item">📍 <em>${j.distance}</em></div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="job-payout">£${j.payout}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">your cut (82%)</div>
+        </div>
+      </div>
+      <div class="job-actions">
+        <button class="btn btn-green" onclick="acceptJob('${j.id}')">✓ Accept</button>
+        <button class="btn btn-ghost" onclick="declineJob('${j.id}')">✗ Decline</button>
+      </div>
+    </div>
+  `).join('');
+  // Countdown timers
+  jobs.forEach(j=>{
+    let [m,s] = j.delay.split(':').map(Number);
+    jobTimers[j.id] = setInterval(()=>{
+      s--;
+      if(s<0){s=59;m--;}
+      if(m<0){clearInterval(jobTimers[j.id]);const el=document.getElementById('job-'+j.id);if(el)el.remove();return;}
+      const el=document.getElementById('timer-'+j.id);
+      if(el)el.textContent=`⏱ ${m}:${String(s).padStart(2,'0')}`;
+    },1000);
+  });
+}
+
+function acceptJob(id) {
+  Object.values(jobTimers).forEach(t=>clearInterval(t));
+  document.getElementById('jobs-list').innerHTML = `
+    <div class="alert alert-green" style="margin-bottom:0">✓ Job accepted! Navigate to the <strong>Active Job</strong> tab to begin.</div>
+  `;
+  driverTab('active');
+  // sync bottom nav
+  const tabs = ['jobs','active','earnings','profile'];
+  const idx = tabs.indexOf('active');
+  for(let i=0;i<4;i++){const el=document.getElementById('bn-'+i);if(el)el.className='bn-item'+(i===idx?' active':'');}
+}
+
+function declineJob(id) {
+  const el = document.getElementById('job-'+id);
+  if (el) { el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300); }
+}
+
+function completeJob() {
+  document.getElementById('driver-active').innerHTML = `
+    <div class="page-header"><div class="page-title">Job <em>Complete</em></div></div>
+    <div class="content-grid">
+      <div class="confirm-box">
+        <span class="confirm-check">✅</span>
+        <div class="confirm-id">TRV-8821</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:22px;margin-bottom:8px">Journey Complete</div>
+        <div style="color:var(--muted);font-size:13px;margin-bottom:20px">The client has been notified and a receipt has been issued.</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:42px;color:var(--gold);margin-bottom:8px">£73</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:20px">Added to today's earnings</div>
+        <button class="btn btn-gold" onclick="driverTab('jobs')">Back to Jobs →</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ═══════════════════════════════════════════
+   DRIVER — ACTIVE JOB & MAP
+═══════════════════════════════════════════ */
+function renderActiveJob() {
+  const el = document.getElementById('active-client-card');
+  if (el) el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:44px;height:44px;background:var(--blue-d);border:1px solid var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px">👤</div>
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:17px">James Whitmore</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">2 passengers · 2 bags</div>
+      </div>
+    </div>
+    <div class="earnings-breakdown">
+      <div class="earn-row"><span class="label">Pickup</span><span class="val">Heathrow T5, Arrivals</span></div>
+      <div class="earn-row"><span class="label">Drop-off</span><span class="val">The Connaught, Mayfair</span></div>
+      <div class="earn-row"><span class="label">Name board</span><span class="val" style="font-family:'DM Mono',monospace">MR J WHITMORE</span></div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-outline btn-sm" style="flex:1">📞 Call</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1">💬 Message</button>
+    </div>
+  `;
+  const fp = document.getElementById('active-flight-panel');
+  if (fp) fp.innerHTML = buildFlightPanel('BA0117');
+  const ns = document.getElementById('nav-steps');
+  if (ns) ns.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:0">
+      <div class="earn-row"><span class="badge badge-active">NOW</span><span class="val" style="margin-left:8px">Head east on Bath Rd · 0.3 mi</span></div>
+      <div class="earn-row"><span class="badge badge-pending">NEXT</span><span class="val" style="margin-left:8px">Turn right onto A4 · in 0.4 mi</span></div>
+      <div class="earn-row" style="opacity:.5"><span style="width:52px;display:inline-block"></span><span class="val" style="margin-left:8px">Continue on A4 for 14 mi</span></div>
+      <div class="earn-row" style="opacity:.5"><span style="width:52px;display:inline-block"></span><span class="val" style="margin-left:8px">Turn left onto Park Lane</span></div>
+      <div class="earn-row" style="opacity:.5"><span style="width:52px;display:inline-block"></span><span class="val" style="margin-left:8px">Arrive: Carlos Place, Mayfair</span></div>
+    </div>
+  `;
+}
+
+function initDriverMap() {
+  renderActiveJob();
+  const canvas = document.getElementById('driver-map');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 700;
+  let t = 200;
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = '#0a0a18';
+    ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
+    for(let x=0;x<W;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=4;
+    [[0,H*0.5,W,H*0.5],[W*0.4,0,W*0.4,H]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
+    const rx=[W*.05,W*.2,W*.38,W*.52,W*.65,W*.78,W*.88];
+    const ry=[H*.6,H*.5,H*.4,H*.35,H*.42,H*.38,H*.3];
+    ctx.strokeStyle='rgba(201,169,110,0.6)';ctx.lineWidth=3;ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(rx[0],ry[0]);for(let i=1;i<rx.length;i++)ctx.lineTo(rx[i],ry[i]);ctx.stroke();
+    // Destination star
+    const dx=rx[rx.length-1],dy=ry[ry.length-1];
+    ctx.beginPath();ctx.arc(dx,dy,12,0,Math.PI*2);ctx.fillStyle='rgba(201,169,110,0.2)';ctx.fill();
+    ctx.beginPath();ctx.arc(dx,dy,6,0,Math.PI*2);ctx.fillStyle=var_gold();ctx.fill();
+    // Driver
+    const prog=Math.min(1,(t-200)*0.0008);
+    const seg=Math.min(Math.floor(prog*(rx.length-1)),rx.length-2);
+    const frac=prog*(rx.length-1)-seg;
+    const px=rx[seg]+(rx[seg+1]-rx[seg])*frac;
+    const py=ry[seg]+(ry[seg+1]-ry[seg])*frac;
+    ctx.beginPath();ctx.arc(px,py,16,0,Math.PI*2);ctx.fillStyle='rgba(74,222,128,0.15)';ctx.fill();
+    ctx.beginPath();ctx.arc(px,py,9,0,Math.PI*2);ctx.fillStyle='#4ade80';ctx.fill();
+    ctx.fillStyle='#0a0a18';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('YOU',px,py);
+    const eta=Math.max(1,Math.round((1-prog)*22));
+    const etaEl=document.getElementById('driver-eta');if(etaEl)etaEl.textContent=eta+' min';
+    t++;
+    driverMapAnim=requestAnimationFrame(draw);
+  }
+  if(driverMapAnim)cancelAnimationFrame(driverMapAnim);
+  draw();
+}
+
+function var_gold(){return '#c9a96e';}
+
+/* ═══════════════════════════════════════════
+   DRIVER — EARNINGS CHART
+═══════════════════════════════════════════ */
+function initEarningsChart() {
+  const canvas = document.getElementById('earnings-chart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const vals = [210, 340, 190, 420, 380, 180, 127];
+  const W=canvas.width, H=canvas.height;
+  const max=Math.max(...vals)*1.15;
+  ctx.clearRect(0,0,W,H);
+  const bw=W/days.length*0.6, gap=W/days.length;
+  vals.forEach((v,i)=>{
+    const bh=(v/max)*(H-20);
+    const x=gap*i+(gap-bw)/2;
+    const y=H-bh-10;
+    const grad=ctx.createLinearGradient(0,y,0,H);
+    grad.addColorStop(0,'rgba(201,169,110,0.8)');
+    grad.addColorStop(1,'rgba(201,169,110,0.1)');
+    ctx.fillStyle=grad;
+    ctx.fillRect(x,y,bw,bh);
+    ctx.fillStyle='rgba(244,242,237,0.4)';
+    ctx.font='9px DM Mono, monospace';
+    ctx.textAlign='center';
+    ctx.fillText('£'+v,x+bw/2,y-4);
+  });
+  document.getElementById('earnings-days').innerHTML=days.map(d=>`<span class="chart-label">${d}</span>`).join('');
+}
+
+function renderPayoutHistory() {
+  const el = document.getElementById('payout-table');
+  if (!el) return;
+  const rows = [
+    ['28 Mar 2026',4,'£381','−£68.58','£312.42','Bank Transfer','Paid'],
+    ['21 Mar 2026',6,'£592','−£106.56','£485.44','Bank Transfer','Paid'],
+    ['14 Mar 2026',5,'£448','−£80.64','£367.36','Bank Transfer','Paid'],
+    ['07 Mar 2026',7,'£634','−£114.12','£519.88','Bank Transfer','Paid'],
+  ];
+  el.innerHTML = rows.map(r=>`<tr><td style="font-family:'DM Mono',monospace;color:var(--muted)">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td style="color:var(--red)">${r[3]}</td><td style="color:var(--gold)">${r[4]}</td><td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${r[5]}</td><td><span class="badge badge-active">${r[6]}</span></td></tr>`).join('');
+}
+
+function renderProfile() {
+  renderDocs();
+}
+
+function renderDocs() {
+  const el = document.getElementById('docs-list');
+  if (!el) return;
+  const docs = [
+    ['PCO Licence','Exp 12 Dec 2026','active'],
+    ['DBS Certificate','Exp 01 Mar 2027','active'],
+    ['MOT Certificate','Exp 08 Aug 2026','active'],
+    ['Public Liability Insurance','Exp 30 Nov 2026','active'],
+    ['Vehicle Registration','Exp 01 Jan 2028','active'],
+    ['Driver\'s Licence (DVLA)','Exp 22 Jun 2034','active'],
+  ];
+  el.innerHTML = docs.map(([name,exp,status])=>`
+    <div class="doc-item">
+      <div><div class="doc-name">${name}</div><div class="doc-expiry">${exp}</div></div>
+      <span class="badge badge-${status}">Valid</span>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — OVERVIEW
+═══════════════════════════════════════════ */
+function renderOverview() {
+  const feed = document.getElementById('activity-feed');
+  if (feed) feed.innerHTML = ACTIVITY_FEED_ITEMS.map(item=>`
+    <div class="feed-item"><div class="feed-dot" style="background:${item.col}"></div><div><div class="feed-text">${item.text}</div><div class="feed-time">${item.time}</div></div></div>
+  `).join('');
+  const sb = document.getElementById('status-breakdown');
+  if (sb) sb.innerHTML = [
+    ['Active',BOOKINGS.filter(b=>b.status==='active').length,'active'],
+    ['Pending',BOOKINGS.filter(b=>b.status==='pending').length,'pending'],
+    ['Assigned',BOOKINGS.filter(b=>b.status==='assigned').length,'assigned'],
+    ['Completed',BOOKINGS.filter(b=>b.status==='completed').length,'completed'],
+  ].map(([l,n,s])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)"><span class="badge badge-${s}">${l}</span><span style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold)">${n}</span></div>`).join('');
+  const tc = document.getElementById('top-cities');
+  if (tc) tc.innerHTML = [
+    ['London','£18,420',34],['Dubai','£9,810',18],['Singapore','£6,240',12],['New York','£8,100',15],['Paris','£4,230',9],['Tokyo','£2,120',6],
+  ].map(([city,rev,pct])=>`
+    <div class="price-row"><span class="price-zone">${city}</span><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--white)">${rev}</span></div>
+  `).join('');
+  // Demand donut-ish bar
+  const dc = document.getElementById('demand-chart');
+  if (dc) {
+    const ctx=dc.getContext('2d');
+    const types=[['Saloon',40,'#c9a96e'],['Exec MPV',28,'#e2c48d'],['SUV',18,'#4ade80'],['First',8,'#60a5fa'],['Other',6,'#94a3b8']];
+    const W=dc.width,H=dc.height;
+    ctx.clearRect(0,0,W,H);
+    let y=10;
+    types.forEach(([label,pct,col])=>{
+      ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(0,y,W,14);
+      ctx.fillStyle=col;ctx.fillRect(0,y,W*(pct/100),14);
+      ctx.fillStyle='rgba(244,242,237,0.7)';ctx.font='10px DM Mono, monospace';ctx.textAlign='left';ctx.fillText(label,0,y-2);
+      ctx.textAlign='right';ctx.fillText(pct+'%',W,y-2);
+      y+=26;
+    });
+  }
+  const ts = document.getElementById('admin-ts');
+  if (ts) ts.textContent = 'Live · Updated '+new Date().toLocaleTimeString();
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — BOOKINGS TABLE
+═══════════════════════════════════════════ */
+function renderBookingsTable(filter='') {
+  const el = document.getElementById('bookings-table');
+  if (!el) return;
+  const shown = filter ? BOOKINGS.filter(b=>b.status===filter) : BOOKINGS;
+  el.innerHTML = shown.map(b=>`
+    <tr>
+      <td style="font-family:'DM Mono',monospace;color:var(--gold)">${b.id}</td>
+      <td>${b.client}</td>
+      <td style="max-width:200px;font-size:12px;color:var(--muted)">${b.from} → ${b.to}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${b.flight}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${b.scheduled}</td>
+      <td>${b.driver||'<span style="color:var(--amber)">Unassigned</span>'}</td>
+      <td style="font-size:12px;color:var(--muted)">${b.vehicle}</td>
+      <td style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--gold)">£${b.price}</td>
+      <td><span class="badge badge-${b.status}">${b.status}</span></td>
+      <td><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm">View</button>${!b.driver?'<button class="btn btn-outline btn-sm">Assign</button>':''}</div></td>
+    </tr>
+  `).join('');
+}
+
+function filterBookings(v) { renderBookingsTable(v); }
+
+/* ═══════════════════════════════════════════
+   ADMIN — DRIVERS TABLE
+═══════════════════════════════════════════ */
+function renderDriversTable() {
+  const el = document.getElementById('drivers-table');
+  if (!el) return;
+  el.innerHTML = DRIVERS.map(d=>`
+    <tr>
+      <td style="font-family:'DM Mono',monospace;color:var(--muted);font-size:11px">${d.id}</td>
+      <td><div style="font-weight:400">${d.name}</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">${d.plate}</div></td>
+      <td style="font-size:12px;color:var(--muted)">${d.region}</td>
+      <td style="font-size:12px;color:var(--muted)">${d.vehicle}</td>
+      <td style="color:var(--gold)">★ ${d.rating}</td>
+      <td style="font-family:'DM Mono',monospace">${d.rides.toLocaleString()}</td>
+      <td style="font-family:'DM Mono',monospace;color:${d.accept>=90?'var(--green)':'var(--amber)'}">${d.accept}%</td>
+      <td><span class="badge badge-${d.status}">${d.status}</span></td>
+      <td><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm">Profile</button><button class="btn btn-ghost btn-sm">Message</button></div></td>
+    </tr>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — VETTING
+═══════════════════════════════════════════ */
+function renderVetting() {
+  const el = document.getElementById('vetting-pipeline');
+  if (!el) return;
+  el.innerHTML = [
+    {stage:'Application',count:8,items:['Ravi Sharma (Dubai)','Ana Costa (Lisbon)','John Park (Seoul)','Maria G. (Madrid)','+4 more']},
+    {stage:'Document Check',count:4,items:['Ben Okafor (Lagos)','Yuna Kim (Tokyo)','Andrei P. (Bucharest)','James M. (NYC)']},
+    {stage:'Background Check',count:3,items:['Fatou Diallo (Paris)','Sven K. (Hamburg)','Rosa C. (Milan)']},
+    {stage:'Vehicle Inspection',count:2,items:['Tom Hughes (London)','Elena B. (Athens)']},
+    {stage:'Trial Rides',count:1,items:['Marcus J. (London)']},
+    {stage:'Approved',count:12,items:['12 drivers onboarded this month']},
+  ].map(s=>`
+    <div class="pipeline-stage">
+      <div class="stage-title">${s.stage}</div>
+      <div class="stage-count">${s.count}</div>
+      <div class="stage-items">${s.items.map(i=>`<div class="stage-item" style="font-size:11px;color:var(--muted)">${i}</div>`).join('')}</div>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — CLIENTS TABLE
+═══════════════════════════════════════════ */
+function renderClientsTable() {
+  const el = document.getElementById('clients-table');
+  if (!el) return;
+  el.innerHTML = CLIENTS_DATA.map(c=>`
+    <tr>
+      <td>${c.name}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${c.email}</td>
+      <td style="text-align:center">${c.bookings}</td>
+      <td style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--gold)">${c.ltv}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${c.last}</td>
+      <td><span class="badge badge-${c.status==='VIP'?'active':'assigned'}">${c.status}</span></td>
+    </tr>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — ANALYTICS CHARTS
+═══════════════════════════════════════════ */
+function initAnalyticsCharts() {
+  const days14 = Array.from({length:14},(_,i)=>{const d=new Date();d.setDate(d.getDate()-13+i);return d.toLocaleDateString('en',{day:'numeric',month:'short'});});
+  const revData = [38000,42000,35000,51000,49000,44000,38000,55000,61000,58000,46000,49000,52000,48920];
+  const volData = [148,162,134,198,191,172,148,214,238,226,179,191,203,190];
+  drawBarChart('revenue-chart','rev-days',days14,revData,'rgba(201,169,110,','£');
+  drawLineChart('volume-chart','vol-days',days14,volData);
+  // City revenue
+  const cr = document.getElementById('city-revenue');
+  if (cr) cr.innerHTML = [
+    ['London',420,34],['New York',310,25],['Dubai',245,20],['Singapore',152,12],['Paris',118,9],
+  ].map(([c,k,p])=>`
+    <div class="price-row"><span class="price-zone">${c}</span><div style="flex:1;margin:0 12px;height:6px;background:rgba(255,255,255,0.05);position:relative"><div style="position:absolute;left:0;top:0;height:100%;width:${p}%;background:var(--gold)"></div></div><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold)">£${k}K</span></div>
+  `).join('');
+  const vr = document.getElementById('vehicle-revenue');
+  if (vr) vr.innerHTML = [
+    ['Saloon',389,40],['Executive MPV',271,28],['First Class',174,18],['SUV',116,12],['Other',58,6],
+  ].map(([c,k,p])=>`
+    <div class="price-row"><span class="price-zone">${c}</span><div style="flex:1;margin:0 12px;height:6px;background:rgba(255,255,255,0.05);position:relative"><div style="position:absolute;left:0;top:0;height:100%;width:${p}%;background:var(--gold)"></div></div><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--gold)">£${k}K</span></div>
+  `).join('');
+  // Hours chart
+  const hc = document.getElementById('hours-chart');
+  if (hc) {
+    const ctx=hc.getContext('2d');
+    const hours=[6,8,12,18,24,16,10,8,20,30,28,22,14,12,10,22,38,42,40,32,20,12,8,6];
+    const W=hc.width,H=hc.height,max=Math.max(...hours)*1.1;
+    ctx.clearRect(0,0,W,H);
+    const bw=W/24*0.7,gap=W/24;
+    hours.forEach((v,i)=>{
+      const bh=(v/max)*(H-10);
+      const x=gap*i+(gap-bw)/2, y=H-bh;
+      const isPeak=(i>=6&&i<=9)||(i>=17&&i<=20);
+      ctx.fillStyle=isPeak?'rgba(201,169,110,0.85)':'rgba(201,169,110,0.25)';
+      ctx.fillRect(x,y,bw,bh);
+    });
+  }
+}
+
+function drawBarChart(canvasId, labelsId, labels, data, colorBase, prefix) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const max=Math.max(...data)*1.15;
+  ctx.clearRect(0,0,W,H);
+  const gap=W/data.length, bw=gap*0.6;
+  data.forEach((v,i)=>{
+    const bh=(v/max)*(H-20), x=gap*i+(gap-bw)/2, y=H-bh-10;
+    const grad=ctx.createLinearGradient(0,y,0,H);
+    grad.addColorStop(0,colorBase+'0.75)');
+    grad.addColorStop(1,colorBase+'0.1)');
+    ctx.fillStyle=grad;
+    ctx.fillRect(x,y,bw,bh);
+  });
+  const el = document.getElementById(labelsId);
+  if (el) el.innerHTML = labels.filter((_,i)=>i%2===0).map(l=>`<span class="chart-label" style="font-size:9px">${l}</span>`).join('');
+}
+
+function drawLineChart(canvasId, labelsId, labels, data) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const max=Math.max(...data)*1.15, min=Math.min(...data)*0.85;
+  ctx.clearRect(0,0,W,H);
+  const toX=i=>i*(W/(data.length-1));
+  const toY=v=>H-10-((v-min)/(max-min))*(H-20);
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(96,165,250,0.3)');
+  grad.addColorStop(1,'rgba(96,165,250,0)');
+  ctx.beginPath();
+  ctx.moveTo(toX(0),toY(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(toX(i),toY(v)));
+  ctx.lineTo(toX(data.length-1),H);
+  ctx.lineTo(0,H);
+  ctx.closePath();
+  ctx.fillStyle=grad;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(toX(0),toY(data[0]));
+  data.forEach((v,i)=>ctx.lineTo(toX(i),toY(v)));
+  ctx.strokeStyle='rgba(96,165,250,0.8)';
+  ctx.lineWidth=2;
+  ctx.stroke();
+  const el = document.getElementById(labelsId);
+  if (el) el.innerHTML = labels.filter((_,i)=>i%2===0).map(l=>`<span class="chart-label" style="font-size:9px">${l}</span>`).join('');
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — PAYOUTS
+═══════════════════════════════════════════ */
+function renderPayouts() {
+  const el = document.getElementById('payouts-table');
+  if (!el) return;
+  el.innerHTML = DRIVERS.slice(0,6).map(d=>{
+    const gross=d.earnings_week*1.22;
+    const comm=gross*0.18;
+    const net=gross-comm;
+    return `<tr>
+      <td>${d.name}</td>
+      <td style="font-size:12px;color:var(--muted)">${d.region}</td>
+      <td style="text-align:center">${Math.floor(d.earnings_week/d.earnings_today*4)}</td>
+      <td style="font-family:'DM Mono',monospace">£${Math.round(gross).toLocaleString()}</td>
+      <td style="color:var(--red);font-family:'DM Mono',monospace">−£${Math.round(comm).toLocaleString()}</td>
+      <td style="color:var(--gold);font-family:'DM Mono',monospace">£${Math.round(net).toLocaleString()}</td>
+      <td style="font-size:11px;color:var(--muted)">Bank Transfer</td>
+      <td><span class="badge badge-pending">Pending</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — LIVE MAP
+═══════════════════════════════════════════ */
+function initAdminMap() {
+  const canvas = document.getElementById('admin-map');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 900;
+  const cities = [
+    {name:'London',x:.48,y:.32,count:124},
+    {name:'Dubai',x:.62,y:.46},
+    {name:'Singapore',x:.75,y:.58},
+    {name:'New York',x:.22,y:.35},
+    {name:'Paris',x:.46,y:.3},
+    {name:'Tokyo',x:.82,y:.38},
+    {name:'Sydney',x:.8,y:.72},
+    {name:'São Paulo',x:.3,y:.65},
+  ];
+  const vehicles = Array.from({length:60},()=>({
+    x:Math.random(),y:Math.random()*0.8+0.1,
+    vx:(Math.random()-.5)*0.0003,vy:(Math.random()-.5)*0.0003,
+    type:Math.random()<0.5?'active':'pickup'
+  }));
+  let t2=0;
+  function draw(){
+    const W=canvas.width,H=canvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+    // faint grid
+    ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+    for(let x=0;x<W;x+=80){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=80){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    // City halos
+    cities.forEach(c=>{
+      const cx=c.x*W, cy=c.y*H;
+      ctx.beginPath();ctx.arc(cx,cy,c.count?c.count/3:20,0,Math.PI*2);
+      ctx.fillStyle='rgba(201,169,110,0.06)';ctx.fill();
+      ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);
+      ctx.fillStyle='rgba(201,169,110,0.85)';ctx.fill();
+      ctx.fillStyle='rgba(244,242,237,0.8)';
+      ctx.font='11px DM Mono, monospace';ctx.textAlign='center';
+      ctx.fillText(c.name,cx,cy-14);
+    });
+    // Vehicles
+    vehicles.forEach(v=>{
+      v.x+=v.vx; v.y+=v.vy;
+      if(v.x<0||v.x>1)v.vx*=-1;
+      if(v.y<0.05||v.y>0.95)v.vy*=-1;
+      const vx=v.x*W, vy=v.y*H;
+      ctx.beginPath();ctx.arc(vx,vy,4,0,Math.PI*2);
+      ctx.fillStyle=v.type==='active'?'rgba(96,165,250,0.8)':'rgba(201,169,110,0.7)';
+      ctx.fill();
+    });
+    t2++;
+    adminMapAnim=requestAnimationFrame(draw);
+  }
+  if(adminMapAnim)cancelAnimationFrame(adminMapAnim);
+  draw();
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — TICKETS & SUPPORT
+═══════════════════════════════════════════ */
+function renderTickets() {
+  const el = document.getElementById('tickets-table');
+  if (!el) return;
+  el.innerHTML = SUPPORT_TICKETS.map(t=>`
+    <tr>
+      <td style="font-family:'DM Mono',monospace;color:var(--gold);font-size:11px">${t.id}</td>
+      <td>${t.client}</td>
+      <td style="font-size:12px;max-width:160px">${t.subject}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted)">${t.booking}</td>
+      <td><span class="badge badge-${t.priority==='High'?'issue':t.priority==='Medium'?'pending':'completed'}">${t.priority}</span></td>
+      <td><span class="badge badge-${t.status==='Open'?'pending':t.status==='Resolved'?'completed':'assigned'}">${t.status}</span></td>
+      <td><button class="btn btn-ghost btn-sm">Open</button></td>
+    </tr>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════
+   ADMIN — SETTINGS
+═══════════════════════════════════════════ */
+function renderSettings() {
+  const el = document.getElementById('coverage-zones');
+  if (!el) return;
+  el.innerHTML = COVERAGE_ZONES_DATA.map(z=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <div><div style="font-size:13px">${z.city}</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">${z.airports} airports · ${z.drivers} drivers</div></div>
+      <span class="badge badge-active">${z.status}</span>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════════════════════════════
+   NOTIFICATIONS
+═══════════════════════════════════════════ */
+function renderNotifications() {
+  document.getElementById('notif-list').innerHTML = [
+    {icon:'⚡',text:'EK201 delayed 40min',sub:'TRV-8820 ETA adjusted',time:'2m ago'},
+    {icon:'✅',text:'TRV-8817 completed',sub:'Yuki Tanaka — 5★ rating',time:'8m ago'},
+    {icon:'📋',text:'New booking TRV-8820',sub:'JFK → The Plaza · £198',time:'11m ago'},
+    {icon:'🚗',text:'Pierre M. accepted TRV-8819',sub:'CDG run confirmed',time:'22m ago'},
+    {icon:'⚠️',text:'Driver DRV-041',sub:'Licence expires in 8 days',time:'1h ago'},
+  ].map(n=>`
+    <div class="notif-item"><div class="notif-icon">${n.icon}</div><div><strong class="notif-text" style="font-weight:400;display:block">${n.text}</strong><div class="notif-text">${n.sub}</div><div class="notif-time">${n.time}</div></div></div>
+  `).join('');
+}
+
+function toggleNotif() {
+  notifOpen = !notifOpen;
+  document.getElementById('notif-panel').className = 'notif-panel'+(notifOpen?' active':'');
+  document.getElementById('notif-panel').style.display = notifOpen ? 'block' : 'none';
+}
+document.addEventListener('click', e => {
+  const panel = document.getElementById('notif-panel');
+  if (!e.target.closest('.notif-btn') && !e.target.closest('#notif-panel')) {
+    notifOpen = false;
+    if (panel) panel.style.display = 'none';
+  }
+});
+
+/* ═══════════════════════════════════════════
+   CLAUDE API — BOOKING ASSISTANT
+═══════════════════════════════════════════ */
+const TRAVERSA_SYSTEM = `You are the Traversa AI assistant — an expert concierge for a global premium private transfer service. Be helpful, concise, and professional. You know about:
+- Airport and cruise port transfers in 190+ countries
+- Vehicle classes: Saloon (£3.20/km), Executive MPV (£4.10/km), Business SUV (£4.80/km), Minibus, First Class (£9.80/km)
+- Live flight monitoring that auto-adjusts for delays
+- Vetted professional drivers with 4.95+ ratings
+- Fixed pricing — no surge, no hidden fees
+- Free cancellation up to 24 hours before
+
+Keep responses under 3 sentences unless asked for detail. Be warm and knowledgeable.`;
+
+function initBookChat() {
+  const chat = document.getElementById('book-chat');
+  if (!chat) return;
+  chat.innerHTML = '';
+  addChatMsg('book-chat','ai','Hello! I\'m your Traversa booking assistant. How can I help you arrange your transfer today?');
+}
+
+function initSupportChat() {
+  const chat = document.getElementById('support-chat');
+  if (!chat) return;
+  if (chat.children.length === 0) {
+    addChatMsg('support-chat','ai','Hi, I\'m Traversa Support. I\'m here to help with any questions about your bookings, drivers, or payments. What can I help you with?');
+  }
+}
+
+function initAdminChat() {
+  const chat = document.getElementById('admin-chat');
+  if (!chat) return;
+  if (chat.children.length === 0) {
+    addChatMsg('admin-chat','ai','I can help resolve support tickets, draft refund decisions, analyse booking disputes, or answer operational questions. What do you need?');
+  }
+}
+
+function addChatMsg(chatId, role, text) {
+  const chat = document.getElementById(chatId);
+  if (!chat) return;
+  const el = document.createElement('div');
+  el.className = 'chat-msg '+role+' fade-in';
+  el.innerHTML = text;
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addTypingIndicator(chatId) {
+  const chat = document.getElementById(chatId);
+  if (!chat) return;
+  const el = document.createElement('div');
+  el.className = 'chat-msg ai fade-in';
+  el.id = chatId+'-typing';
+  el.innerHTML = '<span style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--dim)">Traversa AI is thinking…</span>';
+  chat.appendChild(el);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeTypingIndicator(chatId) {
+  const el = document.getElementById(chatId+'-typing');
+  if (el) el.remove();
+}
+
+async function callClaude(message, chatId) {
+  addTypingIndicator(chatId);
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: TRAVERSA_SYSTEM,
+        messages: [{role:'user',content:message}]
+      })
+    });
+    const data = await res.json();
+    removeTypingIndicator(chatId);
+    const text = data.content?.[0]?.text || 'I\'m sorry, I couldn\'t process that. Please try again.';
+    addChatMsg(chatId,'ai',text);
+  } catch (e) {
+    removeTypingIndicator(chatId);
+    addChatMsg(chatId,'ai','Connection issue. Please try again in a moment.');
+  }
+}
+
+function sendBookChat() {
+  const input = document.getElementById('book-chat-input');
+  if (!input || !input.value.trim()) return;
+  addChatMsg('book-chat','user',input.value);
+  const msg = input.value; input.value = '';
+  callClaude(msg,'book-chat');
+}
+
+function sendSupportChat() {
+  const input = document.getElementById('support-input');
+  if (!input || !input.value.trim()) return;
+  addChatMsg('support-chat','user',input.value);
+  const msg = input.value; input.value = '';
+  callClaude(msg,'support-chat');
+}
+
+function sendAdminChat() {
+  const input = document.getElementById('admin-chat-input');
+  if (!input || !input.value.trim()) return;
+  addChatMsg('admin-chat','user',input.value);
+  const msg = input.value; input.value = '';
+  callClaude('(Admin context - Traversa operations) '+msg,'admin-chat');
+}
+
+function quickChat(msg) {
+  addChatMsg('book-chat','user',msg);
+  callClaude(msg,'book-chat');
+}
+
+/* ═══════════════════════════════════════════
+   BOOTSTRAP
+═══════════════════════════════════════════ */
+// Set today's date in the booking form
+window.addEventListener('load',()=>{
+  const di=document.getElementById('inp-date');
+  if(di){const d=new Date();di.value=d.toISOString().split('T')[0];}
+});
+</script>
+</body>
+</html>
